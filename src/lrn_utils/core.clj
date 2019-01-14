@@ -8,6 +8,20 @@
 
 
 
+(defn atype ;; From: https://gist.github.com/Chouser/a571770f06ef2a9c5334/
+  "Return a string representing the type of an array with dims
+  dimentions and an element of type klass.
+  For primitives, use a klass like Integer/TYPE
+  Useful for type hints of the form: ^#=(atype String) my-str-array"
+  ([klass] (atype klass 1))
+  ([klass dims]
+   (.getName (class
+              (apply make-array
+                     (if (symbol? klass) (eval klass) klass)
+                     (repeat dims 0))))))
+
+
+
 (defmacro do1 [x & body]
   "As PROG1 from Common Lisp."
   `(let [x# ~x]
@@ -202,9 +216,9 @@ x => 3000
 
 
 
-(defn filter-last [pred v]
-  "Fast variant of doing (LAST (FILTER ..)) via RSEQ.
-`v`: A vector or something RSEQ can handle efficiently."
+(defn filter-last "Fast variant of doing (LAST (FILTER ..)) via RSEQ.
+  `v`: A vector or something RSEQ can handle efficiently."
+  [pred v]
   (first (filter pred (rseq v))))
 
 
@@ -218,6 +232,17 @@ x => 3000
   `(let [arr# ~arr]
      (aget arr# (- (alength arr#) 1))))
 
+
+(defmacro aiter [[var arr] & body]
+  "Iterate over each element in array `arr` and execute `body` with element bound to `var`."
+  `(let [len# (alength ~arr)]
+     (loop [idx# 0]
+       (if (= idx# len#)
+         nil
+         (do
+           (let [~var (aget ~arr idx#)]
+             ~@body)
+           (recur (+ idx# 1)))))))
 
 
 
@@ -291,3 +316,13 @@ x => 3000
 
   clojure.lang.IDeref
   (deref [o] val))
+
+
+
+(defmacro iter "Use a JVM Iterator to iterate over `coll`. `jiterator` will be visible in body; you can call e.g. .remove on this."
+  [[var coll] & body]
+  `(let [^java.util.Iterator iter# (.iterator ~coll)
+         ~'jiterator iter#]
+     (while (.hasNext iter#)
+       (let [~var (.next iter#)]
+         ~@body))))
