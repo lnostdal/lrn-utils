@@ -22,8 +22,8 @@
 
 
 
-(defmacro do1 [x & body]
-  "As PROG1 from Common Lisp."
+(defmacro do1 "As PROG1 from Common Lisp."
+  [x & body]
   `(let [x# ~x]
      ~@body
      x#))
@@ -36,16 +36,17 @@
 
 
 
-(defmacro with1 [form & body]
+(defmacro with1 "As DO1, but anaphoric."
+  [form & body]
   `(with ~form
      ~@body
      ~'it))
 
 
 
-(defmacro in [x & args]
-  "Is `x` equal (=) to any of the elements in `args`?
-E.g. ```(in :filled :new :filled) => true``` or ```(in :cancelled :new :filled) => false```"
+(defmacro in "Is `x` equal (=) to any of the elements in `args`?
+  E.g. ```(in :filled :new :filled) => true``` or ```(in :cancelled :new :filled) => false```"
+  [x & args]
   (let [it (gensym)]
     `(let [~it ~x]
        (or ~@(map (fn [y] `(= ~it ~y))
@@ -53,26 +54,26 @@ E.g. ```(in :filled :new :filled) => true``` or ```(in :cancelled :new :filled) 
 
 
 
-(defonce -dbg-locker- (Object.))
-(defmacro dbg [x]
-  "Quick inline debugging where other stuff will or might provide context."
-  `(let [res# ~x]
-     (locking -dbg-locker- ;; Try to generate better output when doing threading.
-       (println (str (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
-     res#))
-
-
-
-(defmacro dbgf [ctx x]
-  "Quick inline debugging where other stuff with context from `ctx` and meta-environment."
-  (let [m (meta &form)]
+(let [dbg-locker (Object.)]
+  (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
+    [x]
     `(let [res# ~x]
-       (locking -dbg-locker- ;; Try to generate better output when doing threading.
-         (println (str "[" ~ctx " "
-                       (last (str/split ~*file* #"/"))
-                       ":" ~(:line m) ":" ~(:column m) "]: "
-                       (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
-       res#)))
+       (locking dbg-locker ;; Try to generate better output when doing threading.
+         (println (str (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
+       res#))
+
+
+
+  (defmacro dbgf "Quick inline debugging where other stuff with context from `ctx` and meta-environment."
+    [ctx x]
+    (let [m (meta &form)]
+      `(let [res# ~x]
+         (locking dbg-locker ;; Try to generate better output when doing threading.
+           (println (str "[" ~ctx " "
+                         (last (str/split ~*file* #"/"))
+                         ":" ~(:line m) ":" ~(:column m) "]: "
+                         (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
+         res#))))
 
 
 
@@ -84,23 +85,23 @@ E.g. ```(in :filled :new :filled) => true``` or ```(in :cancelled :new :filled) 
 
 (let [id (atom Long/MIN_VALUE)]
   (defn uid "Returns a per-session unique ID."
-    (^long []
-     (swap! id inc))))
+    ^long []
+    (swap! id inc)))
 
 
 
-(defn ^String url-encode-component [^String s]
+(defn url-encode-component ^String [^String s]
   (.replace (java.net.URLEncoder/encode s "UTF-8")
             "+"
             "%20"))
 
 
-(defn ^String url-decode-component [^String s]
+(defn url-decode-component ^String [^String s]
   (java.net.URLDecoder/decode s "UTF-8"))
 
 
 
-(defn ^String mime-encode-rfc-2047 [^String s]
+(defn mime-encode-rfc-2047 ^String [^String s]
   (str "=?UTF-8?Q?"
        (-> (url-encode-component s)
            (str/replace "%20" "_")
@@ -144,22 +145,23 @@ E.g. ```(in :filled :new :filled) => true``` or ```(in :cancelled :new :filled) 
 
 
 
-(defn upmap [f coll]
-  "Same as MAP, but eager and with threads and unordered execution (unlike PMAP). The return values are ordered however. E.g.:
-(upmap (fn [f] (f))
+(defn upmap "Same as MAP, but eager and with threads and unordered execution (unlike PMAP). The return values are ordered however. E.g.:
+  (upmap (fn [f] (f))
        (map (fn [x] (fn [] (Thread/sleep x) (dbg x)))
             [3000 2000 1000]))
-x => 1000
-x => 2000
-x => 3000
-(3000 2000 1000)"
+  x => 1000
+  x => 2000
+  x => 3000
+  (3000 2000 1000)"
+  [f coll]
   (map deref (mapv #(future (f %))
                    coll)))
 
 
 
-(defn lazy-mapcat [f coll]
+(defn lazy-mapcat
   "https://stackoverflow.com/questions/21943577/mapcat-breaking-the-lazyness"
+  [f coll]
   (lazy-seq
    (when-let [s (seq coll)]
      (concat (f (first s)) (lazy-mapcat f (rest s))))))
@@ -167,9 +169,10 @@ x => 3000
 
 
 (let [decfmt (java.text.DecimalFormat. "#.########")]
-  (defn double-hstr ^String [^double x] ;; TODO: Rename to DOUBLE-HSTR.
-    "Converts `x` to a \"nice looking\" floating point number (string) suitable for human readers."
+  (defn double-hstr "Converts `x` to a \"nice looking\" floating point number (string) suitable for human readers."
+    ^String [^double x]
     (.format decfmt x)))
+
 
 
 (defn double-finite-or-false "Returns `n` if it is a double finite number (Double/isFinite) or FALSE otherwise."
@@ -218,8 +221,7 @@ x => 3000
 
 (defn filter-last "Fast variant of doing (LAST (FILTER ..)) via RSEQ.
   `v`: A vector or something RSEQ can handle efficiently."
-  [pred v]
-  (first (filter pred (rseq v))))
+  [pred v] (first (filter pred (rseq v))))
 
 
 
@@ -233,8 +235,8 @@ x => 3000
      (aget arr# (- (alength arr#) 1))))
 
 
-(defmacro aiter [[var arr] & body]
-  "Iterate over each element in array `arr` and execute `body` with element bound to `var`."
+(defmacro aiter "Iterate over each element in array `arr` and execute `body` with element bound to `var`."
+  [[var arr] & body]
   `(let [len# (alength ~arr)]
      (loop [idx# 0]
        (if (= idx# len#)
