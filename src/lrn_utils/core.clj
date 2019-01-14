@@ -54,39 +54,38 @@
 
 
 
-(let [dbg-locker (Object.)]
-  (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
-    [x]
+(defonce -dbg-locker- (Object.))
+
+(defmacro dbg "Quick inline debugging where other stuff will or might provide context."
+  [x]
+  `(let [res# ~x]
+     (locking -dbg-locker- ;; Try to generate better output when doing threading.
+       (println (str (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
+     res#))
+
+
+
+(defmacro dbgf "Quick inline debugging where other stuff with context from `ctx` and meta-environment."
+  [ctx x]
+  (let [m (meta &form)]
     `(let [res# ~x]
-       (locking dbg-locker ;; Try to generate better output when doing threading.
-         (println (str (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
-       res#))
-
-
-
-  (defmacro dbgf "Quick inline debugging where other stuff with context from `ctx` and meta-environment."
-    [ctx x]
-    (let [m (meta &form)]
-      `(let [res# ~x]
-         (locking dbg-locker ;; Try to generate better output when doing threading.
-           (println (str "[" ~ctx " "
-                         (last (str/split ~*file* #"/"))
-                         ":" ~(:line m) ":" ~(:column m) "]: "
-                         (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
-         res#))))
+       (locking -dbg-locker- ;; Try to generate better output when doing threading.
+         (println (str "[" ~ctx " "
+                       (last (str/split ~*file* #"/"))
+                       ":" ~(:line m) ":" ~(:column m) "]: "
+                       (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
+       res#)))
 
 
 
 (defn uuid "Returns a universally unique ID."
-  ^String []
-  (.toString (java.util.UUID/randomUUID)))
+  ^String [] (.toString (java.util.UUID/randomUUID)))
 
 
 
 (let [id (atom Long/MIN_VALUE)]
-  (defn uid "Returns a per-session unique ID."
-    ^long []
-    (swap! id inc)))
+  (defn uid "Returns a per-session unique and thread-safe ID."
+    ^long [] (swap! id inc)))
 
 
 
@@ -114,7 +113,8 @@
   (let [md (java.security.MessageDigest/getInstance "SHA-512")]
     (. md update (.getBytes input-str))
     (let [digest (.digest md)]
-      (apply str (map #(format "%02x" (bit-and % 0xff)) digest)))))
+      ;; TODO: Not the best or fastest way to do this. x)
+      (reduce str (map #(format "%02x" (bit-and ^byte % 0xff)) digest)))))
 
 
 
@@ -170,8 +170,7 @@
 
 (let [decfmt (java.text.DecimalFormat. "#.########")]
   (defn double-hstr "Converts `x` to a \"nice looking\" floating point number (string) suitable for human readers."
-    ^String [^double x]
-    (.format decfmt x)))
+    ^String [^double x] (.format decfmt x)))
 
 
 
