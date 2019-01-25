@@ -6,5 +6,6 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [mvxcvi/puget "LATEST"]
                  [org.clojure/core.async "LATEST"]
-                 [clj-time/clj-time "LATEST"]] ;; TODO: Switch to https://github.com/dm3/clojure.java-time (below).
+                 [clj-time/clj-time "LATEST"] ;; TODO: Switch to https://github.com/dm3/clojure.java-time (below).
+                 [com.google.guava/guava "LATEST"]]
   :repl-options {:init-ns lrn-utils.core})

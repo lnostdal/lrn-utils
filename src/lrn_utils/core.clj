@@ -4,7 +4,9 @@
   (:require [clojure.core.async :as async])
   (:require [clj-time.core :as time])
   (:require [clj-time.coerce :as time.coerce])
-  )
+
+  (:import (com.google.common.collect EvictingQueue)
+           (com.google.common.cache Cache CacheBuilder CacheLoader)))
 
 
 
@@ -75,6 +77,28 @@
                        ":" ~(:line m) ":" ~(:column m) "]: "
                        (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
        res#)))
+
+
+
+;; Store actual objects in a "debug cache".
+(defonce ^Cache -debug-cache- (-> (CacheBuilder/newBuilder)
+                                  (.maximumSize 5000) ;; TODO: Magic value!
+                                  (.build)))
+
+(defn dbg-clear []
+  (.clear (.asMap -debug-cache-)))
+
+(defn dbg-put [id item]
+  (locking -debug-cache-
+    (if-let [^EvictingQueue existing-items (.getIfPresent -debug-cache- id)]
+      (.put -debug-cache- id (do1 existing-items (.add existing-items [(time/now) item])))
+      (.put -debug-cache- id (with1 (EvictingQueue/create 100) (.add it [(time/now) item])))))) ;; TODO: 100 is magic value here!
+
+(defn dbg-get
+  ;; NOTE: Even though REVERSE is eager and realizes the entire coll in question, it should be OK since EvictingQueue limits this.
+  ([] (reduce-kv #(assoc %1 %2 (reverse %3)) (sorted-map) (.asMap -debug-cache-)))
+
+  ([id] (reverse (.getIfPresent -debug-cache- id))))
 
 
 
