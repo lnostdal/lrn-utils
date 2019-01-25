@@ -109,7 +109,7 @@
 
 (let [id (atom Long/MIN_VALUE)]
   (defn uid "Returns a per-session unique and thread-safe ID."
-    ^long [] (swap! id inc)))
+    ^long [] (swap! id unchecked-inc)))
 
 
 
@@ -158,7 +158,7 @@
 
 
 
-(defn to-time ^org.joda.time.DateTime [i]
+(defn to-time ^org.joda.time.DateTime [i] ;; TODO: Replace use of this with jtime/instant.
   (condp instance? i
     org.joda.time.DateTime i
     java.lang.Long (time.coerce/from-long i)
@@ -380,3 +380,20 @@
         ts-mlt (long (/ ts-dlt interval))]
     (+ ts-floored-hour (* ts-mlt interval))))
 
+
+
+;; Allows you to do e.g. (reduce-kv (fn [m k v] ..) {} (java.util.HashMap.))
+;; NOTE: Remove this when/if https://dev.clojure.org/jira/browse/CLJ-1762 is closed.
+(extend-protocol clojure.core.protocols/IKVReduce ;; PS: Isn't this awesome? x)
+  java.util.Map
+  (kv-reduce
+    [amap f init]
+    (let [^java.util.Iterator iter (.. amap entrySet iterator)]
+      (loop [ret init]
+        (if (.hasNext iter)
+          (let [^java.util.Map$Entry kv (.next iter)
+                ret (f ret (.getKey kv) (.getValue kv))]
+            (if (reduced? ret)
+              @ret
+              (recur ret)))
+          ret)))))
