@@ -1,5 +1,5 @@
 (ns lrn-utils.core
-  (:require [puget.printer :refer (cprint) :rename {cprint pprint}])
+  (:require [zprint.core :refer (czprint czprint-str) :rename {czprint pprint, czprint-str pprint-str}])
   (:require [clojure.string :as str])
   (:require [clojure.core.async :as async])
   (:require [clj-time.core :as time])
@@ -61,8 +61,8 @@
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
   [x]
   `(let [res# ~x]
-     (locking -dbg-locker- ;; Try to generate better output when doing threading.
-       (println (str (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
+     (locking -dbg-locker- ;; Try to generate better output when doing threading.  TODO: Perhaps TAP> is a better idea anyway.
+       (println (str (pprint-str '~x) " => " (pprint-str res#))))
      res#))
 
 
@@ -71,11 +71,9 @@
   [ctx x]
   (let [m (meta &form)]
     `(let [res# ~x]
-       (locking -dbg-locker- ;; Try to generate better output when doing threading.
-         (println (str "[" ~ctx " "
-                       (last (str/split ~*file* #"/"))
-                       ":" ~(:line m) ":" ~(:column m) "]: "
-                       (puget.printer/cprint-str '~x) " => " (puget.printer/cprint-str res#))))
+       (locking -dbg-locker- ;; Try to generate better output when doing threading. TODO: Perhaps TAP> is a better idea anyway.
+         (println (str "# " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) "):"))
+         (println (str (pprint-str '~x) " => " (pprint-str res#))))
        res#)))
 
 
