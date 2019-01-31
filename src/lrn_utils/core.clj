@@ -4,6 +4,7 @@
   (:require [clojure.core.async :as async])
   (:require [clj-time.core :as time])
   (:require [clj-time.coerce :as time.coerce])
+  (:require io.aviso.exception)
 
   (:import (com.google.common.collect EvictingQueue)
            (com.google.common.cache Cache CacheBuilder CacheLoader)))
@@ -56,31 +57,81 @@
 
 
 
-(defonce -dbg-locker- (Object.))
+(defmulti extract-gist "Extracts the \"most interesting\" stuff from `o` -- e.g. suitable for passing to some pretty printer."
+  (fn [o & _] (class o)))
+
+(defmethod extract-gist :default [o]
+  o)
+
+(defmethod extract-gist java.lang.Class [^java.lang.Class c]
+  (symbol (second (str/split (.toString c) #" "))))
+
+(defmethod extract-gist org.joda.time.DateTime [^org.joda.time.DateTime o]
+  (str o))
+
+(defmethod extract-gist java.lang.String [^java.lang.String o]
+  (subs o 0 (min (.length o) 1000))) ;; TODO: Magic nr..
+
+#_(defmethod extract-gist java.lang.Throwable [^java.lang.Throwable o]
+    (with-out-str (io.aviso.exception/write-exception o)))
+
+
+(defn gist [o] "Returns the 'gist' of some object. Usually a shorter or more informative (for humans) version of the object. Note that text is not necessarily returned here."
+  (clojure.walk/prewalk extract-gist o))
+
+
+
+;; Debug output with blocking buffer to make sure you don't blow up Emacs by mistake
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def -dbg-ch- (async/chan))
+
+
+(let [repl-out (get (get-thread-bindings) #'*out*)] ;; TODO: Good idea? I could pass *out* from DBG-PRINTLN etc..
+  (async/go-loop []
+    (try
+      (when-let [elt (async/<! -dbg-ch-)]
+        (locking -dbg-ch-
+          (binding [*out* repl-out]
+            (cond
+              (string? elt) (print (subs elt 0 (min (.length ^String elt) 1000))) ;; TODO: Magic nr..
+              (instance? Throwable elt) (io.aviso.exception/write-exception elt)
+              true (pprint (gist elt)))
+            (flush))
+          #_(Thread/sleep 25))) ;; TODO: FLUSH will block and work as a sort of rate limiter anyway, no?
+      (catch Throwable e
+        (println "[lrn-utils.core/-dbg-ch-]:" e)
+        (Thread/sleep 1000)))
+    (recur)))
+
+
+
+(defn dbg-println [& xs]
+  (async/>!! -dbg-ch- (apply println-str xs))
+  nil)
+
+
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
-  [x]
-  `(let [res# ~x]
-     (locking -dbg-locker- ;; Try to generate better output when doing threading.  TODO: Perhaps TAP> is a better idea anyway.
-       (println (str (pprint-str '~x) " => " (pprint-str res#))))
-     res#))
+  [x] `(let [res# ~x]
+         (dbg-println (str (pprint-str '~x) " => " (pprint-str res#)))
+         res#))
 
 
 
-(defmacro dbgf "Quick inline debugging where other stuff with context from `ctx` and meta-environment."
+(defmacro dbgf "Quick inline debugging with context from `ctx` and meta-environment."
   [ctx x]
   (let [m (meta &form)]
     `(let [res# ~x]
-       (locking -dbg-locker- ;; Try to generate better output when doing threading. TODO: Perhaps TAP> is a better idea anyway.
-         (println (str "# " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) "):"))
-         (println (str (pprint-str '~x) " => " (pprint-str res#))))
+       (dbg-println (str "# " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) "):" \newline
+                         (pprint-str '~x) " => " (pprint-str res#)))
        res#)))
 
 
 
-;; Store actual objects in a "debug cache".
+;; Store actual objects in a "debug cache". TODO: It'd be cool if this used maximumWeight and https://github.com/clojure-goes-fast/clj-memory-meter instead of simply maximumSize.
 (defonce ^Cache -debug-cache- (-> (CacheBuilder/newBuilder)
-                                  (.maximumSize 5000) ;; TODO: Magic value!
+                                  (.maximumSize 1000) ;; TODO: Magic value!
                                   (.build)))
 
 (defn dbg-clear []
@@ -89,8 +140,8 @@
 (defn dbg-put [id item]
   (locking -debug-cache-
     (if-let [^EvictingQueue existing-items (.getIfPresent -debug-cache- id)]
-      (.put -debug-cache- id (do1 existing-items (.add existing-items [(time/now) item])))
-      (.put -debug-cache- id (with1 (EvictingQueue/create 100) (.add it [(time/now) item])))))) ;; TODO: 100 is magic value here!
+      (.add existing-items [(time/now) item])
+      (.put -debug-cache- id (with1 (EvictingQueue/create 10) (.add it [(time/now) item])))))) ;; TODO: 10 is magic value here!
 
 (defn dbg-get
   ;; NOTE: Even though REVERSE is eager and realizes the entire coll in question, it should be OK since EvictingQueue limits this.
@@ -395,3 +446,15 @@
               @ret
               (recur ret)))
           ret)))))
+
+
+
+(defn small-vec ;; TODO: Figure out the best way to do this later; point is I'll have a single location where I deal with this.
+  "Returns a VEC aliasing a JVM array."
+  (^clojure.lang.PersistentVector [a] (vec (into-array Object [a])))
+  (^clojure.lang.PersistentVector [a b] (vec (into-array Object [a b])))
+  (^clojure.lang.PersistentVector [a b c] (vec (into-array Object [a b c]))))
+
+
+
+
