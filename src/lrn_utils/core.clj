@@ -10,12 +10,13 @@
            (com.google.common.cache Cache CacheBuilder CacheLoader)))
 
 
+;; TODO: Remove this when i pass bindings during debugging again.
+(zprint.core/set-options! {:width 270, :max-length 50, :max-depth 8}) ;; 270 is full length of Emacs window. 130 is 2-column length.
+
+
 
 (defn atype ;; From: https://gist.github.com/Chouser/a571770f06ef2a9c5334/
-  "Return a string representing the type of an array with dims
-  dimentions and an element of type klass.
-  For primitives, use a klass like Integer/TYPE
-  Useful for type hints of the form: ^#=(atype String) my-str-array"
+  "Return a string representing the type of an array with `dims` dimentions and an element of type `klass`. For primitives, use a `klass` like Integer/TYPE. Useful for type hints of the form: ^#=(atype String) my-str-array"
   ([klass] (atype klass 1))
   ([klass dims]
    (.getName (class
@@ -84,7 +85,7 @@
 ;; Debug output with blocking buffer to make sure you don't blow up Emacs by mistake
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def -dbg-ch- (async/chan))
+(defonce -dbg-ch- (async/chan))
 
 
 (let [repl-out (get (get-thread-bindings) #'*out*)] ;; TODO: Good idea? I could pass *out* from DBG-PRINTLN etc..
@@ -94,11 +95,11 @@
         (locking -dbg-ch-
           (binding [*out* repl-out]
             (cond
-              (string? elt) (print (subs elt 0 (min (.length ^String elt) 1000))) ;; TODO: Magic nr..
+              (string? elt) (println (subs elt 0 (min (.length ^String elt) 100000))) ;; TODO: Magic nr..
               (instance? Throwable elt) (io.aviso.exception/write-exception elt)
               true (pprint (gist elt)))
             (flush))
-          #_(Thread/sleep 25))) ;; TODO: FLUSH will block and work as a sort of rate limiter anyway, no?
+          (Thread/sleep 25))) ;; TODO: FLUSH will block and work as a sort of rate limiter anyway, no?
       (catch Throwable e
         (println "[lrn-utils.core/-dbg-ch-]:" e)
         (Thread/sleep 1000)))
@@ -107,14 +108,17 @@
 
 
 (defn dbg-println [& xs]
-  (async/>!! -dbg-ch- (apply println-str xs))
+  (async/>!! -dbg-ch- (apply print-str xs))
   nil)
+
+(defn dbg-pprint [o]
+  (async/>!! -dbg-ch- (pprint-str (gist o))))
 
 
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
   [x] `(let [res# ~x]
-         (dbg-println (str (pprint-str '~x) " => " (pprint-str res#)))
+         (dbg-println (str (pprint-str '~x) " => " (pprint-str (gist res#))))
          res#))
 
 
@@ -124,12 +128,15 @@
   (let [m (meta &form)]
     `(let [res# ~x]
        (dbg-println (str "# " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) "):" \newline
-                         (pprint-str '~x) " => " (pprint-str res#)))
+                         (pprint-str '~x) " => " (pprint-str (gist res#))))
        res#)))
 
 
 
-;; Store actual objects in a "debug cache". TODO: It'd be cool if this used maximumWeight and https://github.com/clojure-goes-fast/clj-memory-meter instead of simply maximumSize.
+;; Store actual objects in a "debug cache"
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: It'd be cool if this used maximumWeight and https://github.com/clojure-goes-fast/clj-memory-meter instead of simply maximumSize.
 (defonce ^Cache -debug-cache- (-> (CacheBuilder/newBuilder)
                                   (.maximumSize 1000) ;; TODO: Magic value!
                                   (.build)))
@@ -214,6 +221,12 @@
     String (time.coerce/from-string i)
     org.joda.time.LocalDate i
     org.joda.time.LocalDateTime i))
+
+
+(defn ts-to-str ^String [i] ;; TODO: Take an optional format arg..
+  (condp instance? i
+    java.lang.Long (time.coerce/to-string (time.coerce/from-long i ))
+    org.joda.time.DateTime (time.coerce/to-string i)))
 
 
 
@@ -454,7 +467,3 @@
   (^clojure.lang.PersistentVector [a] (vec (into-array Object [a])))
   (^clojure.lang.PersistentVector [a b] (vec (into-array Object [a b])))
   (^clojure.lang.PersistentVector [a b c] (vec (into-array Object [a b c]))))
-
-
-
-
