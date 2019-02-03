@@ -1,4 +1,5 @@
 (ns lrn-utils.core
+  (:require [clojure.pprint :refer (cl-format print-table #_pprint)])
   (:require [zprint.core :refer (czprint czprint-str) :rename {czprint pprint, czprint-str pprint-str}])
   (:require [clojure.string :as str])
   (:require [clojure.core.async :as async])
@@ -11,7 +12,7 @@
 
 
 ;; TODO: Remove this when i pass bindings during debugging again.
-(zprint.core/set-options! {:width 270, :max-length 50, :max-depth 8}) ;; 270 is full length of Emacs window. 130 is 2-column length.
+(zprint.core/set-options! {:width 130, :max-length 50, :max-depth 8}) ;; 270 is full length of Emacs window. 130 is 2-column length.
 
 
 
@@ -58,6 +59,13 @@
 
 
 
+(defn print-table-str ^String [& xs]
+  (with-out-str (apply print-table xs)))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defmulti extract-gist "Extracts the \"most interesting\" stuff from `o` -- e.g. suitable for passing to some pretty printer."
   (fn [o & _] (class o)))
 
@@ -76,9 +84,8 @@
 #_(defmethod extract-gist java.lang.Throwable [^java.lang.Throwable o]
     (with-out-str (io.aviso.exception/write-exception o)))
 
-
-(defn gist [o] "Returns the 'gist' of some object. Usually a shorter or more informative (for humans) version of the object. Note that text is not necessarily returned here."
-  (clojure.walk/prewalk extract-gist o))
+(defn gist "Returns the 'gist' of some object. Usually a shorter or more informative (for humans) version of the object. Note that text is not necessarily returned here."
+  [o] (clojure.walk/prewalk extract-gist o))
 
 
 
@@ -106,7 +113,6 @@
     (recur)))
 
 
-
 (defn dbg-println [& xs]
   (async/>!! -dbg-ch- (apply print-str xs))
   nil)
@@ -115,26 +121,24 @@
   (async/>!! -dbg-ch- (pprint-str (gist o))))
 
 
-
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
   [x] `(let [res# ~x]
          (dbg-println (str (pprint-str '~x) " => " (pprint-str (gist res#))))
          res#))
 
 
-
 (defmacro dbgf "Quick inline debugging with context from `ctx` and meta-environment."
   [ctx x]
   (let [m (meta &form)]
     `(let [res# ~x]
-       (dbg-println (str "# " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) "):" \newline
-                         (pprint-str '~x) " => " (pprint-str (gist res#))))
+       (dbg-println (str "#DBGF " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) ") ===>" \newline
+                         (pprint-str '~x) " => " (pprint-str (gist res#)) \newline))
        res#)))
 
 
 
 ;; Store actual objects in a "debug cache"
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; TODO: It'd be cool if this used maximumWeight and https://github.com/clojure-goes-fast/clj-memory-meter instead of simply maximumSize.
 (defonce ^Cache -debug-cache- (-> (CacheBuilder/newBuilder)
@@ -155,6 +159,18 @@
   ([] (reduce-kv #(assoc %1 %2 (reverse %3)) (sorted-map) (.asMap -debug-cache-)))
 
   ([id] (reverse (.getIfPresent -debug-cache- id))))
+
+
+
+(defn do1-sleep "Inline sleep in context of -> macro or similar process. Returns `obj`."
+  [obj millis]
+  (do1 obj
+    (Thread/sleep millis)))
+
+(defn do2-sleep "Inline sleep in context of ->> macro or similar process. Returns `obj`."
+  [millis obj]
+  (do1 obj
+    (Thread/sleep millis)))
 
 
 
