@@ -1,5 +1,5 @@
 (defproject lrn-utils "0.1.0-SNAPSHOT"
-  :description "A place where I dump common 'stuff' -- both bad, half-baked ideas and perhaps some good ones."
+  :description "A place where I dump common 'stuff' -- both bad, half-baked ideas and perhaps some good ones. Please don't use this, or if you do just extract ideas and snippets from it."
   :url "http://example.com/FIXME"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}

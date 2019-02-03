@@ -1,6 +1,6 @@
 # lrn-utils
 
-A Clojure library designed to ... well, that part is up to you.
+A place where I dump common 'stuff' -- both bad, half-baked ideas and perhaps some good ones. Please don't use this, or if you do just extract ideas and snippets from it.
 
 ## Usage
 
