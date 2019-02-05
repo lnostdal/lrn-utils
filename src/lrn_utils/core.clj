@@ -136,6 +136,17 @@
        res#)))
 
 
+(defmacro dbg-time "Quick inline debugging with evaluation time (similar to clojure.core/time) included."
+  [expr]
+  `(let [start# (. System (nanoTime))
+         ret# ~expr
+         diff# (/ (double (- (. System (nanoTime)) start#))
+                  1000000.0)]
+     (dbg-println (str (pprint-str '~expr) " ==[" diff# "ms]==> "
+                       (pprint-str (gist ret#))))
+     ret#))
+
+
 
 ;; Store actual objects in a "debug cache"
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
