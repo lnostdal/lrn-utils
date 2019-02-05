@@ -241,6 +241,18 @@
 
 
 
+(defn async-consume-sequence "I have 0 idea why, but doing (async/onto-chan ch s) pretty much always ends up leaking memory for me -- so I made this which does the same (almost..) as async/onto-chan without the leak problem."
+  [ch s]
+  (future
+    (loop [s s]
+      (when-let [f (first s)]
+        (when (async/>!! ch f)
+          (recur (rest s)))))
+    (async/close! ch)))
+
+
+
+
 (defn to-time ^org.joda.time.DateTime [i] ;; TODO: Replace use of this with jtime/instant.
   (condp instance? i
     org.joda.time.DateTime i
