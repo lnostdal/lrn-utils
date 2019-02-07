@@ -92,7 +92,7 @@
 ;; Debug output with blocking buffer to make sure you don't blow up Emacs by mistake
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defonce -dbg-ch- (async/chan))
+(defonce -dbg-ch- (async/chan 10))
 
 
 (let [repl-out (get (get-thread-bindings) #'*out*)] ;; TODO: Good idea? I could pass *out* from DBG-PRINTLN etc..
