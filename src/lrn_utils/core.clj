@@ -117,8 +117,17 @@
   (async/>!! -dbg-ch- (apply print-str xs))
   nil)
 
-(defn dbg-pprint [o]
-  (async/>!! -dbg-ch- (pprint-str (gist o))))
+(defn dbg-pprint
+  ([] ;; Transducer variant.
+   (fn [xf]
+     (fn ([] (xf))
+       ([result] (xf result))
+       ([result obj]
+        (dbg-pprint obj)
+        (xf result obj)))))
+
+  ([o] ;; Normal variant.
+   (async/>!! -dbg-ch- (pprint-str (gist o)))))
 
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
@@ -173,12 +182,22 @@
 
 
 
-(defn do1-sleep "Inline sleep in context of -> macro or similar process. Returns `obj`."
-  [obj millis]
-  (do1 obj
-    (Thread/sleep millis)))
+(defn do1-sleep "Inline sleep often used in context of -> macro or similar process. Returns `obj`."
+  ([millis]
+   (fn [xf] ;; Transducer variant.
+     (fn
+       ([] (xf))
+       ([result] (xf result))
+       ([result obj]
+        (Thread/sleep millis)
+        (xf result obj)))))
 
-(defn do2-sleep "Inline sleep in context of ->> macro or similar process. Returns `obj`."
+  ([obj millis] ;; Normal variant.
+   (do1 obj
+     (Thread/sleep millis))))
+
+
+(defn do2-sleep "Inline sleep often used in context of ->> macro or similar process. Returns `obj`."
   [millis obj]
   (do1 obj
     (Thread/sleep millis)))
