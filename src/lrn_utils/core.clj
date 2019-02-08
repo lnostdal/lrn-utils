@@ -458,13 +458,26 @@
 
 
 
-(defmacro iter "Use a JVM Iterator to iterate over `coll`. `jiterator` will be visible in body; you can call e.g. .remove on this."
+(defmacro jiter "Use a java.util.Iterator to iterate over `coll`. `jiterator` will be visible in body; you can call e.g. .remove on this. Returns NIL."
   [[var coll] & body]
   `(let [^java.util.Iterator iter# (.iterator ~coll)
          ~'jiterator iter#]
      (while (.hasNext iter#)
        (let [~var (.next iter#)]
          ~@body))))
+
+(defmacro vec-iter "Simple iteration over a Vector or perhaps anything COUNTED? with lookup by index via IFn. Returns NIL."
+  [[var coll] & body]
+  `(let [coll# ~coll
+         length# (count coll#)]
+     (dotimes [idx# length#]
+       (let [~var (coll# idx#)]
+         ~@body))))
+
+(defmacro doiter "Pretty much the same as RUN!, but with the parameter list reordered. Does not hold on to the head of a lazy sequence. Returns NIL."
+  [[var coll] & body]
+  `(run! (fn [~var] ~@body)
+         ~coll))
 
 
 
