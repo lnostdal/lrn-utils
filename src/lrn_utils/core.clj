@@ -359,7 +359,6 @@
   `(aget ~arr 0))
 
 
-
 (defmacro alast [arr]
   `(let [arr# ~arr]
      (aget arr# (- (alength arr#) 1))))
@@ -513,3 +512,13 @@
   (^clojure.lang.PersistentVector [a] (vec (into-array Object [a])))
   (^clojure.lang.PersistentVector [a b] (vec (into-array Object [a b])))
   (^clojure.lang.PersistentVector [a b c] (vec (into-array Object [a b c]))))
+
+
+
+(defn file-atomic-move "Atomically move `src` file to `trg` file -- also replacing it if needed."
+  [src trg]
+  (let [src (java.nio.file.Paths/get (java.net.URI/create (str "file://" src)))
+        trg (java.nio.file.Paths/get (java.net.URI/create (str "file://" trg)))]
+    (java.nio.file.Files/move src trg (into-array java.nio.file.CopyOption
+                                                  [(java.nio.file.StandardCopyOption/ATOMIC_MOVE)
+                                                   (java.nio.file.StandardCopyOption/REPLACE_EXISTING)]))))
