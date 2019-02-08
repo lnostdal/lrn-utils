@@ -260,7 +260,8 @@
 
 
 
-(defn to-time ^org.joda.time.DateTime [i] ;; TODO: Replace use of this with jtime/instant.
+;; TODO: Replace all of this with java-time stuff and/or https://github.com/dm3/clojure.java-time
+(defn to-time ^org.joda.time.DateTime [i]
   (condp instance? i
     org.joda.time.DateTime i
     java.lang.Long (time.coerce/from-long i)
@@ -268,11 +269,18 @@
     org.joda.time.LocalDate i
     org.joda.time.LocalDateTime i))
 
-
 (defn ts-to-str ^String [i] ;; TODO: Take an optional format arg..
   (condp instance? i
     java.lang.Long (time.coerce/to-string (time.coerce/from-long i ))
     org.joda.time.DateTime (time.coerce/to-string i)))
+
+(defn ts-to-long ^long [i] ;; TODO: Rename? Not really only TimeStamps.
+  (condp instance? i
+    java.lang.Long i
+    org.joda.time.DateTime (time.coerce/to-long i)
+    org.joda.time.ReadableDuration (.getMillis ^org.joda.time.ReadableDuration i)
+    org.joda.time.ReadablePeriod (time/in-millis i)
+    java.lang.String (time.coerce/to-long (time.coerce/from-string i))))
 
 
 
