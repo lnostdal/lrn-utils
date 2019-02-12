@@ -262,14 +262,14 @@
 ;; Try to make java.time.* and the clojure.java-time library less annoying to use
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;   * (clj-time.core/now) is now (java-time/instant)
-;;   * (time.coerce/to-long (time/now)) => (ts-to-long (jtime/local-date-time))
-;;   * (time/seconds 30) => (jtime/duration 30 :seconds)
-;;   * (time/in-seconds (time/interval (time/now) (time/seconds 5))) =>
+;;   * (clj-time.core/now) is now (jtime/instant)
+;;   * (clj-time.coerce/to-long (time/now)) => (ts-to-long (jtime/instant)
+;;   * (clj-time/seconds 30) => (jtime/duration 30 :seconds)
+;;   * (clj-time/in-seconds (clj-time/interval (clj-time/now) (clj-time/seconds 5))) =>
 ;;       (jtime/as (jtime/duration (jtime/local-date-time)
 ;;                                 (jtime/plus (jtime/local-date-time) (jtime/duration 5 :seconds)))
 ;;                 :seconds)
-;;  * (time/floor .. time/day) => (jtime/truncate-to .. :days)
+;;  * (clj-time/floor .. clj-time/day) => (jtime/truncate-to .. :days)
 
 (defn to-ts "Best effort attempt at converting what's given for `i` into a java.time.* type -- usually java.time.Instant and always UTC."
   ;; TODO/NOTE: Tries to use java.time.* classes and methods directly, because whatever clojure.java-time is doing(???) seems slow. I might change some of this around later...
