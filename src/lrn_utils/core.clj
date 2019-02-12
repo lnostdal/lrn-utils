@@ -286,10 +286,13 @@
     java.lang.Long (java.time.Instant/ofEpochMilli i)
     String (try ;; NOTE: This is crazy slow when parsing fails; use explicit format instead!
              (to-ts (jtime/zoned-date-time i)) ;; E.g. "2019-02-11T18:47:58Z"
-             (catch clojure.lang.ExceptionInfo e ;; ..why would anyone try to "hide" such an important exception???
+             (catch clojure.lang.ExceptionInfo e
                (if (instance? java.time.DateTimeException (ex-cause e))
                  ;; E.g. "2018-01-01". NOTE: "2018-1-1" won't work!
-                 (to-ts (jtime/truncate-to (jtime/local-date-time (jtime/local-date i)) :days))
+                 (try (to-ts (jtime/truncate-to (jtime/local-date-time (jtime/local-date i)) :days))
+                      (catch clojure.lang.ExceptionInfo e
+                        ;; TODO: Pretty horrid, but seem necessary for this exception to be visible in Cider atm..
+                        (throw (ex-cause e))))
                  (throw e))))))
 
 
