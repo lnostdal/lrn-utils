@@ -8,5 +8,7 @@
                  [zprint "LATEST"] ;; Alternate PPRINT facilities.
                  [io.aviso/pretty "LATEST"] ;; Pretty printer for exceptions.
                  [com.google.guava/guava "LATEST"]
-                 [clj-time/clj-time "LATEST"]] ;; TODO: Switch to https://github.com/dm3/clojure.java-time (below).
-  :repl-options {:init-ns lrn-utils.core})
+                 [clojure.java-time "LATEST"]]
+
+  ;;:repl-options {:init-ns lrn-utils.core} ;; What sort of garbage idea or thing is this? x) This creates all kinds of problems when testing the lib solo.
+  )

@@ -3,15 +3,14 @@
   (:require [zprint.core :refer (czprint czprint-str) :rename {czprint pprint, czprint-str pprint-str}])
   (:require [clojure.string :as str])
   (:require [clojure.core.async :as async])
-  (:require [clj-time.core :as time])
-  (:require [clj-time.coerce :as time.coerce])
+  (:require [java-time :as jtime])
   (:require io.aviso.exception)
 
   (:import (com.google.common.collect EvictingQueue)
            (com.google.common.cache Cache CacheBuilder CacheLoader)))
 
 
-;; TODO: Remove this when i pass bindings during debugging again.
+;; TODO: Remove this when I pass bindings during debugging again. I.e. _external_ context should define these things..
 (zprint.core/set-options! {:width 130, :max-length 50, :max-depth 8}) ;; 270 is full length of Emacs window. 130 is 2-column length.
 
 
@@ -33,13 +32,16 @@
      ~@body
      x#))
 
+(defmacro do2 "As PROG2 from Common Lisp."
+  [x y & body]
+  `(let [y# ~y]
+     ~@body
+     y#))
 
 
 (defmacro with [form & body]
   `(let [~'it ~form]
      ~@body))
-
-
 
 (defmacro with1 "As DO1, but anaphoric."
   [form & body]
@@ -75,14 +77,11 @@
 (defmethod extract-gist java.lang.Class [^java.lang.Class c]
   (symbol (second (str/split (.toString c) #" "))))
 
-(defmethod extract-gist org.joda.time.DateTime [^org.joda.time.DateTime o]
-  (str o))
-
 (defmethod extract-gist java.lang.String [^java.lang.String o]
-  (subs o 0 (min (.length o) 1000))) ;; TODO: Magic nr..
+  (subs o 0 (min (.length o) 1000))) ;; TODO: Magic nr.. This should probably be pulled from a dynamic var.
 
-#_(defmethod extract-gist java.lang.Throwable [^java.lang.Throwable o]
-    (with-out-str (io.aviso.exception/write-exception o)))
+(defmethod extract-gist java.lang.Throwable [^java.lang.Throwable o]
+  (with-out-str (io.aviso.exception/write-exception o)))
 
 (defn gist "Returns the 'gist' of some object. Usually a shorter or more informative (for humans) version of the object. Note that text is not necessarily returned here."
   [o] (clojure.walk/prewalk extract-gist o))
@@ -101,10 +100,10 @@
       (when-let [elt (async/<! -dbg-ch-)]
         (locking -dbg-ch-
           (binding [*out* repl-out]
-            (cond
-              (string? elt) (println (subs elt 0 (min (.length ^String elt) 100000))) ;; TODO: Magic nr..
-              (instance? Throwable elt) (io.aviso.exception/write-exception elt)
-              true (pprint (gist elt)))
+            (condp instance? elt
+              String (println (subs elt 0 (min (.length ^String elt) 100000))) ;; TODO: Magic nr..
+              Throwable (io.aviso.exception/write-exception elt)
+              (pprint (gist elt)))
             (flush))
           (Thread/sleep 25))) ;; TODO: FLUSH will block and work as a sort of rate limiter anyway, no?
       (catch Throwable e
@@ -171,8 +170,8 @@
 (defn dbg-put [id item]
   (locking -debug-cache-
     (if-let [^EvictingQueue existing-items (.getIfPresent -debug-cache- id)]
-      (.add existing-items [(time/now) item])
-      (.put -debug-cache- id (with1 (EvictingQueue/create 10) (.add it [(time/now) item])))))) ;; TODO: 10 is magic value here!
+      (.add existing-items [(jtime/instant) item])
+      (.put -debug-cache- id (with1 (EvictingQueue/create 10) (.add it [(jtime/instant) item])))))) ;; TODO: 10 is magic value here!
 
 (defn dbg-get
   ;; NOTE: Even though REVERSE is eager and realizes the entire coll in question, it should be OK since EvictingQueue limits this.
@@ -260,27 +259,65 @@
 
 
 
-;; TODO: Replace all of this with java-time stuff and/or https://github.com/dm3/clojure.java-time
-(defn to-time ^org.joda.time.DateTime [i]
-  (condp instance? i
-    org.joda.time.DateTime i
-    java.lang.Long (time.coerce/from-long i)
-    String (time.coerce/from-string i)
-    org.joda.time.LocalDate i
-    org.joda.time.LocalDateTime i))
+;; Try to make java.time.* and the clojure.java-time library less annoying to use
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;   * (clj-time.core/now) is now (java-time/instant)
+;;   * (time.coerce/to-long (time/now)) => (ts-to-long (jtime/local-date-time))
+;;   * (time/seconds 30) => (jtime/duration 30 :seconds)
+;;   * (time/in-seconds (time/interval (time/now) (time/seconds 5))) =>
+;;       (jtime/as (jtime/duration (jtime/local-date-time)
+;;                                 (jtime/plus (jtime/local-date-time) (jtime/duration 5 :seconds)))
+;;                 :seconds)
+;;  * (time/floor .. time/day) => (jtime/truncate-to .. :days)
 
-(defn ts-to-str ^String [i] ;; TODO: Take an optional format arg..
+(defn to-ts "Best effort attempt at converting what's given for `i` into a java.time.* type -- usually java.time.Instant and always UTC."
+  ;; TODO/NOTE: Tries to use java.time.* classes and methods directly, because whatever clojure.java-time is doing(???) seems slow. I might change some of this around later...
+  [i]
   (condp instance? i
-    java.lang.Long (time.coerce/to-string (time.coerce/from-long i ))
-    org.joda.time.DateTime (time.coerce/to-string i)))
+    java.time.Instant i
+    java.time.Duration i
+    java.time.ZonedDateTime (.toInstant ^java.time.ZonedDateTime i)
+    java.time.LocalDateTime (.toInstant ^java.time.LocalDateTime i java.time.ZoneOffset/UTC)
+    java.time.LocalDate (-> (.atStartOfDay ^java.time.LocalDate i) ;; => LocalDateTime
+                            (.toInstant java.time.ZoneOffset/UTC))
+    java.time.LocalTime (-> (.atDate ^java.time.LocalTime i (java.time.LocalDate/now)) ;; => LocalDateTime
+                            (.toInstant java.time.ZoneOffset/UTC))
+    java.lang.Long (java.time.Instant/ofEpochMilli i)
+    String (try ;; NOTE: This is crazy slow; use explicit format instead!
+             (to-ts (jtime/local-date-time i)) ;; E.g. "2019-02-11T18:47:58"
+             (catch clojure.lang.ExceptionInfo e ;; ..why would anyone try to "hide" such an important exception???
+               (if (instance? java.time.DateTimeException (ex-cause e))
+                 ;; E.g. "2018-01-01". NOTE: "2018-1-1" won't work!
+                 (to-ts (jtime/truncate-to (jtime/local-date-time (jtime/local-date i)) :days))
+                 (throw e))))))
 
-(defn ts-to-long ^long [i] ;; TODO: Rename? Not really only TimeStamps.
+
+(defn to-time [i] (to-ts i)) ;; TODO. Remove later.
+
+(defn ts-to-long " * java.time.Instant => millis sine epoch.
+  * java.time.Duration => millis"
+  ^long [i]
   (condp instance? i
     java.lang.Long i
-    org.joda.time.DateTime (time.coerce/to-long i)
-    org.joda.time.ReadableDuration (.getMillis ^org.joda.time.ReadableDuration i)
-    org.joda.time.ReadablePeriod (time/in-millis i)
-    java.lang.String (time.coerce/to-long (time.coerce/from-string i))))
+    java.time.Instant (.toEpochMilli ^java.time.Instant i)
+    java.time.Duration (.toMillis ^java.time.Duration i)
+    (ts-to-long (to-ts i))))
+
+
+(defn ts-now-long ^long []
+  (System/currentTimeMillis))
+
+(defn ts-to-str
+  (^String [i] (ts-to-str i (-> (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss.SSS")
+                                (.withZone java.time.ZoneOffset/UTC))))
+  (^String [i ^java.time.format.DateTimeFormatter fmt]
+   (.format fmt (to-ts i))))
+
+
+(defmethod extract-gist java.time.LocalDateTime [^java.time.LocalDateTime o]
+  (ts-to-str o))
+
 
 
 
