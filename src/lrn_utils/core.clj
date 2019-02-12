@@ -284,8 +284,8 @@
     java.time.LocalTime (-> (.atDate ^java.time.LocalTime i (java.time.LocalDate/now)) ;; => LocalDateTime
                             (.toInstant java.time.ZoneOffset/UTC))
     java.lang.Long (java.time.Instant/ofEpochMilli i)
-    String (try ;; NOTE: This is crazy slow; use explicit format instead!
-             (to-ts (jtime/local-date-time i)) ;; E.g. "2019-02-11T18:47:58"
+    String (try ;; NOTE: This is crazy slow when parsing fails; use explicit format instead!
+             (to-ts (jtime/zoned-date-time i)) ;; E.g. "2019-02-11T18:47:58Z"
              (catch clojure.lang.ExceptionInfo e ;; ..why would anyone try to "hide" such an important exception???
                (if (instance? java.time.DateTimeException (ex-cause e))
                  ;; E.g. "2018-01-01". NOTE: "2018-1-1" won't work!
