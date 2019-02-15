@@ -10,10 +10,6 @@
            (com.google.common.cache Cache CacheBuilder CacheLoader)))
 
 
-;; TODO: Remove this when I pass bindings during debugging again. I.e. _external_ context should define these things..
-(zprint.core/set-options! {:width 130, :max-length 50, :max-depth 8}) ;; 270 is full length of Emacs window. 130 is 2-column length.
-
-
 
 (defn atype ;; From: https://gist.github.com/Chouser/a571770f06ef2a9c5334/
   "Return a string representing the type of an array with `dims` dimentions and an element of type `klass`. For primitives, use a `klass` like Integer/TYPE. Useful for type hints of the form: ^#=(atype String) my-str-array"
@@ -64,6 +60,26 @@
 (defn print-table-str ^String [& xs]
   (with-out-str (apply print-table xs)))
 
+(let [decfmt (java.text.DecimalFormat. "#.########")]
+  (defn double-hstr "Converts `x` to a \"nice looking\" floating point number (string) suitable for human readers."
+    ^String [^double x] (.format decfmt x)))
+
+(defn double-finite-or-false "Returns `n` if it is a double finite number (Double/isFinite) or FALSE otherwise."
+  ^double [^double n]
+  (if (Double/isFinite n)
+    n
+    false))
+
+(defn double-finite-or-zero ^double [^double n]
+  (if (Double/isFinite n)
+    n
+    0.0))
+
+(defn double-zero-to-nan ^double [^double n]
+  (if (zero? n)
+    ##NaN
+    n))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -79,6 +95,9 @@
 
 (defmethod extract-gist java.lang.String [^java.lang.String o]
   (subs o 0 (min (.length o) 1000))) ;; TODO: Magic nr.. This should probably be pulled from a dynamic var.
+
+(defmethod extract-gist java.lang.Double [^java.lang.Double o]
+  (double-hstr o))
 
 (defmethod extract-gist java.lang.Throwable [^java.lang.Throwable o]
   (with-out-str (io.aviso.exception/write-exception o)))
@@ -344,34 +363,6 @@
   (lazy-seq
    (when-let [s (seq coll)]
      (concat (f (first s)) (lazy-mapcat f (rest s))))))
-
-
-
-(let [decfmt (java.text.DecimalFormat. "#.########")]
-  (defn double-hstr "Converts `x` to a \"nice looking\" floating point number (string) suitable for human readers."
-    ^String [^double x] (.format decfmt x)))
-
-
-
-(defn double-finite-or-false "Returns `n` if it is a double finite number (Double/isFinite) or FALSE otherwise."
-  ^double [^double n]
-  (if (Double/isFinite n)
-    n
-    false))
-
-
-
-(defn double-finite-or-zero ^double [^double n]
-  (if (Double/isFinite n)
-    n
-    0.0))
-
-
-
-(defn double-zero-to-nan ^double [^double n]
-  (if (zero? n)
-    ##NaN
-    n))
 
 
 
