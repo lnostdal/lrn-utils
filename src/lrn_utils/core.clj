@@ -1,5 +1,7 @@
 (ns lrn-utils.core
-  (:require [clojure.pprint :refer (cl-format print-table #_pprint)])
+  (:require [clojure.pprint :refer (cl-format print-table #_pprint #_pprint-str)])
+  ;; NOTE/TODO: Puget seems like complete bullshit now; it doesn't care about flags set in .emacs or *print-length* or anything.
+  ;;(:require [puget.printer :refer (cprint cprint-str) :rename {cprint pprint, cprint-str pprint-str}])
   (:require [zprint.core :refer (czprint czprint-str) :rename {czprint pprint, czprint-str pprint-str}])
   (:require [clojure.string :as str])
   (:require [clojure.core.async :as async])
@@ -132,7 +134,9 @@
         (locking -dbg-ch-
           (binding [*out* repl-out]
             (condp instance? elt
-              String (println (subs elt 0 (min (.length ^String elt) 100000))) ;; TODO: Magic nr..
+              String (println (if (> 100000 (.length ^String elt))
+                                (subs elt 0 (min (.length ^String elt) 100000))
+                                elt))
               Throwable (io.aviso.exception/write-exception elt)
               (pprint (gist elt)))
             (flush))
@@ -161,6 +165,12 @@
 
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
+  [x] `(let [res# ~x]
+         (dbg-println (str (pprint-str '~x) " => " (pprint-str res#)))
+         res#))
+
+
+(defmacro dbgg "Quick inline debugging where other stuff will or might provide context."
   [x] `(let [res# ~x]
          (dbg-println (str (pprint-str '~x) " => " (pprint-str (gist res#))))
          res#))
@@ -276,7 +286,7 @@
 
 (defn async-consume-buffer
   "Consume as many values from `ch` as possible without blocking. Once `ch` blocks (i.e. its buffer is empty), the values are returned as a vector.
-  `first-request-blocking?`: If true (default when not supplied is false), the first request (only) from `ch` is permitted to block."
+  `first-request-blocking?`: If true (default is false), the first request (only) from `ch` is permitted to block."
   ([ch] (async-consume-buffer ch false))
 
   ([ch first-request-blocking?]
@@ -303,6 +313,7 @@
 ;;  * (clj-time/floor .. clj-time/day) => (jtime/truncate-to .. :days)
 
 (defn to-ts "Best effort attempt at converting what's given for `i` into a java.time.* type -- usually java.time.Instant and always UTC."
+  ;; TODO: Alright, seems java.time.Instant is 100% garbage poison. So this and everything else will now use base things around java.time.ZonedDateTime -- *always* UTC tho; fuck any other garbage .
   ;; TODO/NOTE: Tries to use java.time.* classes and methods directly, because whatever clojure.java-time is doing(???) seems slow. I might change some of this around later...
   [i]
   (condp instance? i

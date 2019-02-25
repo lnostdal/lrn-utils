@@ -6,6 +6,8 @@
   :dependencies [[org.clojure/clojure "LATEST"]
                  [org.clojure/core.async "LATEST"]
                  [zprint "LATEST"] ;; Alternate PPRINT facilities.
+                 ;; NOTE/TODO: Puget seems like complete bullshit now; it doesn't care about flags set in .emacs or *print-length* or anything.
+                 ;;[mvxcvi/puget "LATEST"] ;; Alternate PPRINT facilities.
                  [io.aviso/pretty "LATEST"] ;; Pretty printer for exceptions.
                  [com.google.guava/guava "LATEST"]
                  [clojure.java-time "LATEST"]]
