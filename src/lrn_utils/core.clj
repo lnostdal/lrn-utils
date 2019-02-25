@@ -1,5 +1,7 @@
 (ns lrn-utils.core
-  (:require [clojure.pprint :refer (cl-format print-table #_pprint)])
+  (:require [clojure.pprint :refer (cl-format print-table #_pprint #_pprint-str)])
+  ;; NOTE/TODO: Puget seems like complete bullshit now; it doesn't care about flags set in .emacs or *print-length* or anything.
+  ;;(:require [puget.printer :refer (cprint cprint-str) :rename {cprint pprint, cprint-str pprint-str}])
   (:require [zprint.core :refer (czprint czprint-str) :rename {czprint pprint, czprint-str pprint-str}])
   (:require [clojure.string :as str])
   (:require [clojure.core.async :as async])
@@ -84,11 +86,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; TODO: This thing is probably very silly and dangerous; i.e. you might end up in infinite loops because it doesn't use a dynamic var to keep track of where it has already been etc.. To do this stuff proper, the dynamic var must hold a map containing places it has already been -- and when it revisits a place it must print out some symbol or marker that signals that we're dealing with circularity.
+
 (defmulti extract-gist "Extracts the \"most interesting\" stuff from `o` -- e.g. suitable for passing to some pretty printer."
   (fn [o & _] (class o)))
 
 (defmethod extract-gist :default [o]
-  o)
+  ;; Since clojure.walk/prewalk might assoc a value of different type to a field in `o` we need to dodge any type checks.
+  (if (record? o)
+    (extract-gist (into {} o))
+    o))
 
 (defmethod extract-gist java.lang.Class [^java.lang.Class c]
   (symbol (second (str/split (.toString c) #" "))))
@@ -96,8 +103,15 @@
 (defmethod extract-gist java.lang.String [^java.lang.String o]
   (subs o 0 (min (.length o) 1000))) ;; TODO: Magic nr.. This should probably be pulled from a dynamic var.
 
+(defmethod extract-gist clojure.lang.Ratio [^clojure.lang.Ratio o]
+  (extract-gist (Double/parseDouble (double-hstr (double o)))))
+
 (defmethod extract-gist java.lang.Double [^java.lang.Double o]
-  (double-hstr o))
+  (with (double-hstr o)
+    (try
+      (java.lang.Long/parseLong it)
+      (catch java.lang.NumberFormatException e
+        (java.lang.Double/parseDouble it)))))
 
 (defmethod extract-gist java.lang.Throwable [^java.lang.Throwable o]
   (with-out-str (io.aviso.exception/write-exception o)))
@@ -120,7 +134,9 @@
         (locking -dbg-ch-
           (binding [*out* repl-out]
             (condp instance? elt
-              String (println (subs elt 0 (min (.length ^String elt) 100000))) ;; TODO: Magic nr..
+              String (println (if (> 100000 (.length ^String elt))
+                                (subs elt 0 (min (.length ^String elt) 100000))
+                                elt))
               Throwable (io.aviso.exception/write-exception elt)
               (pprint (gist elt)))
             (flush))
@@ -149,6 +165,12 @@
 
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
+  [x] `(let [res# ~x]
+         (dbg-println (str (pprint-str '~x) " => " (pprint-str res#)))
+         res#))
+
+
+(defmacro dbgg "Quick inline debugging where other stuff will or might provide context."
   [x] `(let [res# ~x]
          (dbg-println (str (pprint-str '~x) " => " (pprint-str (gist res#))))
          res#))
@@ -264,7 +286,7 @@
 
 (defn async-consume-buffer
   "Consume as many values from `ch` as possible without blocking. Once `ch` blocks (i.e. its buffer is empty), the values are returned as a vector.
-  `first-request-blocking?`: If true (default when not supplied is false), the first request (only) from `ch` is permitted to block."
+  `first-request-blocking?`: If true (default is false), the first request (only) from `ch` is permitted to block."
   ([ch] (async-consume-buffer ch false))
 
   ([ch first-request-blocking?]
@@ -291,6 +313,7 @@
 ;;  * (clj-time/floor .. clj-time/day) => (jtime/truncate-to .. :days)
 
 (defn to-ts "Best effort attempt at converting what's given for `i` into a java.time.* type -- usually java.time.Instant and always UTC."
+  ;; TODO: Alright, seems java.time.Instant is 100% garbage poison. So this and everything else will now use base things around java.time.ZonedDateTime -- *always* UTC tho; fuck any other garbage .
   ;; TODO/NOTE: Tries to use java.time.* classes and methods directly, because whatever clojure.java-time is doing(???) seems slow. I might change some of this around later...
   [i]
   (condp instance? i
