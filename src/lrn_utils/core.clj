@@ -597,3 +597,13 @@
     (java.nio.file.Files/move src trg (into-array java.nio.file.CopyOption
                                                   [(java.nio.file.StandardCopyOption/ATOMIC_MOVE)
                                                    (java.nio.file.StandardCopyOption/REPLACE_EXISTING)]))))
+
+
+
+(defn catvec
+  ([s] (catvec [] s))
+
+  ([init s]
+   (persistent! (reduce #(reduce conj! %1 %2)
+                        (transient init)
+                        s))))
