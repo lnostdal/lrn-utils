@@ -607,3 +607,6 @@
    (persistent! (reduce #(reduce conj! %1 %2)
                         (transient init)
                         s))))
+
+(definline vec-first "Returns the first element in `v`."
+  [v] `(get ~v 0))
