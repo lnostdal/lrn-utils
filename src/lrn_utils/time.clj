@@ -13,7 +13,6 @@
 ;;  * (clj-time/floor .. clj-time/day) => (jtime/truncate-to .. :days)
 
 (defn to-ts "Best effort attempt at converting what's given for `i` into a java.time.* type -- usually java.time.Instant and always UTC."
-  ;; TODO: Alright, seems java.time.Instant is 100% garbage poison. So this and everything else will now use base things around java.time.ZonedDateTime -- *always* UTC tho; fuck any other garbage .
   ;; TODO/NOTE: Tries to use java.time.* classes and methods directly, because whatever clojure.java-time is doing(???) seems slow. I might change some of this around later...
   [i]
   (condp instance? i
@@ -62,3 +61,24 @@
 
 (defmethod extract-gist java.time.LocalDateTime [^java.time.LocalDateTime o]
   (ts-to-str o))
+
+
+
+;; TODO: Better name? Make hour a param?
+(defn ts-floor "Align `ts` on the hourly split into `interval` segments.
+  `ts`: Millis.
+  `interval`: Millis.
+
+  Returns: timestamp in millis."
+  ^long [^long ts ^long interval]
+  ;; Old slower (I think!) variant using clj-time.
+  #_(let [ts (time.coerce/from-long ts) ;; TODO: Calculate this stuff using ^long as is!
+          ts-floor (time/floor ts time/hour)
+          ts-dlt (long (time/in-millis (time/interval ts-floor ts)))
+          ts-mlt (long (Math/floor (/ ts-dlt interval)))]
+      (time.coerce/to-long (time/plus ts-floor (time/millis (* ts-mlt interval)))))
+  (let [hour 3600000
+        ts-floored-hour (- ts (rem ts hour))
+        ts-dlt (- ts ts-floored-hour)
+        ts-mlt (long (/ ts-dlt interval))]
+    (+ ts-floored-hour (* ts-mlt interval))))
