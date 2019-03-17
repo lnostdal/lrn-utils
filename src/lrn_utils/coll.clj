@@ -17,13 +17,11 @@
 
 (defn queue "Persistent immutable queue."
   (^clojure.lang.PersistentQueue []
-   (queue nil))
+   (clojure.lang.PersistentQueue/EMPTY))
 
   (^clojure.lang.PersistentQueue [coll]
-   (loop [coll coll, q (clojure.lang.PersistentQueue/EMPTY)]
-     (if (empty? coll)
-       q
-       (recur (next coll) (conj q (first coll)))))))
+   (reduce conj (clojure.lang.PersistentQueue/EMPTY) coll)))
+
 
 
 (defn filter-last "Fast variant of doing (LAST (FILTER ..)) via RSEQ.
