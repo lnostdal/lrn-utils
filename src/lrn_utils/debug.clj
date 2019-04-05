@@ -4,6 +4,7 @@
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defonce -dbg-ch- (async/chan 10))
+(defonce -dbg-max-string-length- 100000)
 
 
 (async/go-loop []
@@ -12,8 +13,8 @@
       (locking -dbg-ch-
         (with-bindings bnds
           (condp instance? elt
-            String (println (if (> 100000 (.length ^String elt))
-                              (subs elt 0 (min (.length ^String elt) 100000))
+            String (println (if (> ^long -dbg-max-string-length- (.length ^String elt))
+                              (subs elt 0 (min (.length ^String elt) ^long -dbg-max-string-length-))
                               elt))
             Throwable (io.aviso.exception/write-exception elt)
             (pprint (gist elt)))
@@ -26,8 +27,10 @@
 
 
 (defn dbg-println [& xs]
-  (async/>!! -dbg-ch- [(apply print-str xs) (get-thread-bindings)])
-  nil)
+  (async/>!! -dbg-ch- [(reduce str (interpose \space (map pprint-str xs)))
+                       (get-thread-bindings)])
+  (last xs))
+
 
 (defn dbg-pprint
   ([] ;; Transducer variant.
@@ -39,18 +42,13 @@
         (xf result obj)))))
 
   ([o] ;; Normal variant.
-   (async/>!! -dbg-ch- [(pprint-str (gist o)) (get-thread-bindings)])))
+   (async/>!! -dbg-ch- [o (get-thread-bindings)])
+   o))
 
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
   [x] `(let [res# ~x]
-         (dbg-println (str (pprint-str '~x) " => " (pprint-str res#)))
-         res#))
-
-
-(defmacro dbgg "Quick inline debugging where other stuff will or might provide context."
-  [x] `(let [res# ~x]
-         (dbg-println (str (pprint-str '~x) " => " (pprint-str (gist res#))))
+         (dbg-println (str (pprint-str '~x) " => " (gist res#)))
          res#))
 
 
@@ -59,7 +57,7 @@
   (let [m (meta &form)]
     `(let [res# ~x]
        (dbg-println (str "#DBGF " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) ") ===>" \newline
-                         (pprint-str '~x) " => " (pprint-str (gist res#)) \newline))
+                         (pprint-str '~x) " => " (gist res#) \newline))
        res#)))
 
 
