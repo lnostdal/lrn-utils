@@ -6,28 +6,27 @@
 (defonce -dbg-ch- (async/chan 10))
 
 
-(let [repl-out (get (get-thread-bindings) #'*out*)] ;; TODO: Good idea? I could pass *out* from DBG-PRINTLN etc..
-  (async/go-loop []
-    (try
-      (when-let [elt (async/<! -dbg-ch-)]
-        (locking -dbg-ch-
-          (binding [*out* repl-out]
-            (condp instance? elt
-              String (println (if (> 100000 (.length ^String elt))
-                                (subs elt 0 (min (.length ^String elt) 100000))
-                                elt))
-              Throwable (io.aviso.exception/write-exception elt)
-              (pprint (gist elt)))
-            (flush))
-          (Thread/sleep 25))) ;; TODO: FLUSH will block and work as a sort of rate limiter anyway, no?
-      (catch Throwable e
-        (println "[lrn-utils.core/-dbg-ch-]:" e)
-        (Thread/sleep 1000)))
-    (recur)))
+(async/go-loop []
+  (try
+    (when-let [[elt bnds] (async/<! -dbg-ch-)]
+      (locking -dbg-ch-
+        (with-bindings bnds
+          (condp instance? elt
+            String (println (if (> 100000 (.length ^String elt))
+                              (subs elt 0 (min (.length ^String elt) 100000))
+                              elt))
+            Throwable (io.aviso.exception/write-exception elt)
+            (pprint (gist elt)))
+          (flush))
+        (Thread/sleep 25))) ;; TODO: FLUSH will block and work as a sort of rate limiter anyway, no?
+    (catch Throwable e
+      (println "[lrn-utils.core/-dbg-ch-]:" e)
+      (Thread/sleep 1000)))
+  (recur))
 
 
 (defn dbg-println [& xs]
-  (async/>!! -dbg-ch- (apply print-str xs))
+  (async/>!! -dbg-ch- [(apply print-str xs) (get-thread-bindings)])
   nil)
 
 (defn dbg-pprint
@@ -40,7 +39,7 @@
         (xf result obj)))))
 
   ([o] ;; Normal variant.
-   (async/>!! -dbg-ch- (pprint-str (gist o)))))
+   (async/>!! -dbg-ch- [(pprint-str (gist o)) (get-thread-bindings)])))
 
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
