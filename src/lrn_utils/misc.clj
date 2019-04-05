@@ -69,3 +69,8 @@
     `(let [~it ~x]
        (or ~@(map (fn [y] `(= ~it ~y))
                   args)))))
+
+
+
+(defn keywordize ":hello_world => :hello-world or \"hello_world\" => :hello-world"
+  ^clojure.lang.Keyword [x] (keyword (clojure.string/replace (name x) \_ \-)))
