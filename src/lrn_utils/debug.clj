@@ -3,6 +3,11 @@
 ;; Debug output with blocking buffer to make sure you don't blow up Emacs by mistake
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defn print-or-pprint-str
+  [x] (if (string? x) x (pprint-str x)))
+
+
 (defonce -dbg-max-string-length- 100000)
 (defonce -dbg-ch-
   (with1 (async/chan 50)
@@ -15,7 +20,7 @@
                                 (subs elt 0 (min (.length ^String elt) ^long -dbg-max-string-length-))
                                 elt))
               Throwable (io.aviso.exception/write-exception elt)
-              (pprint (gist elt)))
+              (print-or-pprint-str (gist elt)))
             (flush))
           (Thread/sleep 25)) ;; TODO:
         (catch Throwable e
@@ -25,10 +30,6 @@
 
 
 (defn to-dbg-ch [x] (async/>!! -dbg-ch- [x (get-thread-bindings)]))
-
-
-(defn print-or-pprint-str
-  [x] (if (string? x) x (pprint-str x)))
 
 
 (defn dbg-println "Similar to PRINTLN, but runs each elt in `xs` through a call to GIST – and returns the last value in `xs`."
