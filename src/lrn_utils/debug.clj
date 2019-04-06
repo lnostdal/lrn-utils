@@ -3,27 +3,25 @@
 ;; Debug output with blocking buffer to make sure you don't blow up Emacs by mistake
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defonce -dbg-ch- (async/chan 10))
 (defonce -dbg-max-string-length- 100000)
-
-
-(async/go-loop []
-  (try
-    (when-let [[elt bnds] (async/<! -dbg-ch-)]
-      (locking -dbg-ch-
-        (with-bindings bnds
-          (condp instance? elt
-            String (println (if (> ^long -dbg-max-string-length- (.length ^String elt))
-                              (subs elt 0 (min (.length ^String elt) ^long -dbg-max-string-length-))
-                              elt))
-            Throwable (io.aviso.exception/write-exception elt)
-            (pprint (gist elt)))
-          (flush))
-        (Thread/sleep 25))) ;; TODO: FLUSH will block and work as a sort of rate limiter anyway, no?
-    (catch Throwable e
-      (println "[lrn-utils.core/-dbg-ch-]:" e)
-      (Thread/sleep 1000)))
-  (recur))
+(defonce -dbg-ch-
+  (with1 (async/chan 50)
+    (async/go-loop []
+      (try
+        (when-let [[elt bnds] (async/<! it)]
+          (with-bindings bnds
+            (condp instance? elt
+              String (println (if (> ^long -dbg-max-string-length- (.length ^String elt))
+                                (subs elt 0 (min (.length ^String elt) ^long -dbg-max-string-length-))
+                                elt))
+              Throwable (io.aviso.exception/write-exception elt)
+              (pprint (gist elt)))
+            (flush))
+          (Thread/sleep 25)) ;; TODO:
+        (catch Throwable e
+          (println "[lrn-utils.core/-dbg-ch-]:" e)
+          (Thread/sleep 1000)))
+      (recur))))
 
 
 (defn to-dbg-ch [x] (async/>!! -dbg-ch- [x (get-thread-bindings)]))
