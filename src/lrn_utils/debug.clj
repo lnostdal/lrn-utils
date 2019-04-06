@@ -26,9 +26,20 @@
   (recur))
 
 
-(defn dbg-println [& xs]
-  (async/>!! -dbg-ch- [(reduce str (interpose \space (map pprint-str xs)))
-                       (get-thread-bindings)])
+(defn to-dbg-ch [s]
+  (async/>!! -dbg-ch- [s (get-thread-bindings)]))
+
+
+(defn print-or-pprint-str
+  [x] (if (string? x) x (pprint-str x)))
+
+
+(defn dbg-println "Similar to PRINTLN, but runs each elt in `xs` through a call to GIST – and returns the last value in `xs`."
+  [& xs]
+  (to-dbg-ch (transduce (comp (map gist)
+                              (map print-or-pprint-str)
+                              (interpose \space))
+                        str "" xs))
   (last xs))
 
 
@@ -42,22 +53,30 @@
         (xf result obj)))))
 
   ([o] ;; Normal variant.
-   (async/>!! -dbg-ch- [o (get-thread-bindings)])
+   (to-dbg-ch o)
    o))
 
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
-  [x] `(let [res# ~x]
-         (dbg-println (str (pprint-str '~x) " => " (gist res#)))
-         res#))
+  [x]
+  `(let [res# ~x]
+     (to-dbg-ch (str (pprint-str '~x) " => " (print-or-pprint-str (gist res#))))
+     res#))
+
+
+(defmacro dbgc "Quick inline debugging with brief context denoted by `ctx`."
+  [ctx x]
+  `(let [res# ~x]
+     (to-dbg-ch (str (pprint-str ~ctx) " | " (pprint-str '~x) " => " (print-or-pprint-str (gist res#))))
+     res#))
 
 
 (defmacro dbgf "Quick inline debugging with context from `ctx` and meta-environment."
   [ctx x]
   (let [m (meta &form)]
     `(let [res# ~x]
-       (dbg-println (str "#DBGF " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) ") ===>" \newline
-                         (pprint-str '~x) " => " (gist res#) \newline))
+       (to-dbg-ch (str "#DBGF " ~ctx " (" (last (str/split ~*file* #"/")) ":" ~(:line m) ":" ~(:column m) ") ===>" \newline
+                       (pprint-str '~x) " => " (print-or-pprint-str (gist res#)) \newline))
        res#)))
 
 
@@ -67,8 +86,8 @@
          ret# ~expr
          diff# (/ (double (- (. System (nanoTime)) start#))
                   1000000.0)]
-     (dbg-println (str (pprint-str '~expr) " ==[" diff# "ms]==> "
-                       (pprint-str (gist ret#))))
+     (to-dbg-ch (str (pprint-str '~expr) " ==[" diff# "ms]==> "
+                     (print-or-pprint-str (gist ret#))))
      ret#))
 
 
