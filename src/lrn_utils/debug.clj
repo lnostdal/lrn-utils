@@ -26,8 +26,7 @@
   (recur))
 
 
-(defn to-dbg-ch [s]
-  (async/>!! -dbg-ch- [s (get-thread-bindings)]))
+(defn to-dbg-ch [x] (async/>!! -dbg-ch- [x (get-thread-bindings)]))
 
 
 (defn print-or-pprint-str
@@ -39,7 +38,8 @@
   (to-dbg-ch (transduce (comp (map gist)
                               (map print-or-pprint-str)
                               (interpose \space))
-                        str "" xs))
+                        rfs/str ;; StringBuilder > new String
+                        "" xs))
   (last xs))
 
 
