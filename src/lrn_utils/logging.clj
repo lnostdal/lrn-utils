@@ -59,8 +59,9 @@
            res @(http-client/post (:url m)
                                   {:body (-> {:raw output-str, :event-id event-id, :api-key (:api-key m)}
                                              (json/write-value-as-string))})]
-       (assert (= 201 (:status res))
-               (with-out-str (clojure.pprint/pprint res)))))})
+       (when (not= 201 (:status res))
+         (println "## lrn-utils.logger/http-appender =>")
+         (clojure.pprint/pprint res))))})
 
 
 
