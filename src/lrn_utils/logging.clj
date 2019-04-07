@@ -5,18 +5,17 @@
             [org.httpkit.client :as http-client]
             [taoensso.encore :as enc]
             [taoensso.timbre :as timbre]
-            [jsonista.core :as json])
+            [jsonista.core :as json]
+            [clojure.core.async :as async])
   (:use lrn-utils.core))
 
-;; TODO: Use a queue and push chunks.
-
+;; FIXME: While this is not a goal of this component, do some *basic* delivery and double-delivery checks?
 
 
 (defonce ^:private -server- (atom nil)) ;; Actual server object returned by HTTP-KIT.
 
 
 
-;; FIXME: While this is not a goal of this component, do some *basic* double-delivery checks via some sort of middleware?
 (defn server-handler-println [req]
   ;; This is just a dummy handler. Usually you'd want to:
   ;;   * Put this server behind a server that does HTTPS/TLS.
@@ -42,6 +41,30 @@
 
 
 
+(defn send-event [m]
+  (let [event-id (.toString (java.util.UUID/randomUUID))
+        res @(http-client/post (:url m)
+                               {:body (-> {:raw (:data m), :event-id event-id, :api-key (:api-key m)}
+                                          (json/write-value-as-string))})]
+    (when (not= 201 (:status res))
+      (println "## lrn-utils.logger/send-event =>")
+      (clojure.pprint/pprint res))))
+
+
+
+(def -http-appender-ch-
+  (with1 (async/chan (async/sliding-buffer 3))
+    (async/go-loop []
+      (try
+        (when-let [event (async/<! it)]
+          (send-event event))
+        (catch Throwable e
+          (println "[lrn-utils.logger/-http-appender-ch-]:" e)
+          (Thread/sleep 1000)))
+      (recur))))
+
+
+
 (defn http-appender "Appender for timbre.
   :url: URL of http server."
   [m]
@@ -52,16 +75,9 @@
    :output-fn :inherit
    :fn
    (fn [data]
-     ;; FIXME: While this is not a goal of this component, do some *basic* delivery checks here?
      (let [{:keys [output_]} data
-           output-str (force output_)
-           event-id (.toString (java.util.UUID/randomUUID))
-           res @(http-client/post (:url m)
-                                  {:body (-> {:raw output-str, :event-id event-id, :api-key (:api-key m)}
-                                             (json/write-value-as-string))})]
-       (when (not= 201 (:status res))
-         (println "## lrn-utils.logger/http-appender =>")
-         (clojure.pprint/pprint res))))})
+           output-str (force output_)]
+       (async/put! -http-appender-ch- {:data output-str, :api-key (:api-key m), :url (:url m)})))})
 
 
 
