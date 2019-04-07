@@ -77,3 +77,10 @@
 
 (defn unkeywordize ":hello-world => \"hello_world\""
   ^String [x] (clojure.string/replace (name x) \- \_))
+
+
+
+(defn public-ip []
+  (-> (slurp (:body @(http-client/get "https://checkip.amazonaws.com")))
+      (clojure.string/trim-newline)))
+

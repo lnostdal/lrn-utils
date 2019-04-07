@@ -9,6 +9,7 @@
   (:require [java-time :as jtime])
   (:require io.aviso.exception)
   (:require [net.cgrand.xforms.rfs :as rfs])
+  (:require [org.httpkit.client :as http-client])
   (:require lrn-utils.misc)
   (:require lrn-utils.coll)
   (:require lrn-utils.unsync-mut)
