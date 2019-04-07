@@ -32,14 +32,14 @@
 (defn to-dbg-ch [x] (async/>!! -dbg-ch- [x (get-thread-bindings)]))
 
 
-(defn dbg-println "Similar to PRINTLN, but runs each elt in `xs` through a call to GIST – and returns the last value in `xs`."
+(defn dbg-println "Similar to PRINTLN, but runs each elt in `xs` through a call to GIST."
   [& xs]
   (to-dbg-ch (transduce (comp (map gist)
                               (map print-or-pprint-str)
                               (interpose \space))
-                        rfs/str ;; StringBuilder > new String
-                        "" xs))
-  (last xs))
+                        rfs/str "" ;; StringBuilder > new String
+                        xs))
+  nil)
 
 
 (defn dbg-pprint
@@ -53,7 +53,8 @@
 
   ([o] ;; Normal variant.
    (to-dbg-ch o)
-   o))
+   nil))
+
 
 
 (defmacro dbg "Quick inline debugging where other stuff will or might provide context."
