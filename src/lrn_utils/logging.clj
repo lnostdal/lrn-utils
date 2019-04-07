@@ -8,6 +8,8 @@
             [jsonista.core :as json])
   (:use lrn-utils.core))
 
+;; TODO: Use a queue and push chunks.
+
 
 
 (defonce ^:private -server- (atom nil)) ;; Actual server object returned by HTTP-KIT.
@@ -17,8 +19,9 @@
 ;; FIXME: While this is not a goal of this component, do some *basic* double-delivery checks via some sort of middleware?
 (defn server-handler-println [req]
   ;; This is just a dummy handler. Usually you'd want to:
-  ;;   * Put the server behind a server that does HTTPS/TLS.
+  ;;   * Put this server behind a server that does HTTPS/TLS.
   ;;   * Put an API-key or similar in the request (e.g. URL) and use this for filtering.
+  (dbg-println req)
   (dbg-println (:raw (json/read-value (slurp (.bytes (:body req))))))
   {:status 201, :body "OK"})
 
@@ -44,20 +47,25 @@
   [m]
   {:enabled? true
    :async? false
-   :min-level :warn
+   :min-level (or (:min-level m) :warn)
    :rate-limit nil
    :output-fn :inherit
    :fn
    (fn [data]
+     ;; FIXME: While this is not a goal of this component, do some *basic* delivery checks here?
      (let [{:keys [output_]} data
            output-str (force output_)
-           event-id (.toString (java.util.UUID/randomUUID))]
-       ;; FIXME: While this is not a goal of this component, do some *basic* delivery checks here?
-       (http-client/post (:url m)
-                         {:body (-> {:raw output-str, :event-id event-id}
-                                    (json/write-value-as-string))})))})
+           event-id (.toString (java.util.UUID/randomUUID))
+           res @(http-client/post (:url m)
+                                  {:body (-> {:raw output-str, :event-id event-id, :api-key (:api-key m)}
+                                             (json/write-value-as-string))})]
+       (assert (= 201 (:status res))
+               (with-out-str (clojure.pprint/pprint res)))))})
 
 
+
+#_(server-start 6243 #'server-handler-println)
 
 #_(timbre/merge-config!
-   {:appenders {::appender (#'http-appender {:url "http://localhost:8080"})}})
+   {:appenders {::appender (#'http-appender {:url "http://localhost:6243"})}})
+
