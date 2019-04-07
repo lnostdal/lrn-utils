@@ -10,9 +10,11 @@
   (:use lrn-utils.core))
 
 ;; FIXME: While this is not a goal of this component, do some *basic* delivery and double-delivery checks?
+;; FIXME: Send chunks and use the ASYNC-CONSUME-BUFFER Fn!
 
 
 (defonce ^:private -server- (atom nil)) ;; Actual server object returned by HTTP-KIT.
+(defonce -http-timeout- (atom 10000)) ;; millis
 
 
 
@@ -41,10 +43,11 @@
 
 
 
-(defn send-event [m]
+(defn- send-event [m]
   (let [event-id (.toString (java.util.UUID/randomUUID))
         res @(http-client/post (:url m)
-                               {:body (-> {:raw (:data m), :event-id event-id, :api-key (:api-key m)}
+                               {:timeout @-http-timeout-
+                                :body (-> {:raw (:data m), :event-id event-id, :api-key (:api-key m)}
                                           (json/write-value-as-string))})]
     (when (not= 201 (:status res))
       (println "## lrn-utils.logger/send-event =>")
@@ -52,7 +55,7 @@
 
 
 
-(def -http-appender-ch-
+(def ^:private -http-appender-ch-
   (with1 (async/chan (async/sliding-buffer 3))
     (async/go-loop []
       (try

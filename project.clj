@@ -5,13 +5,12 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.10.1-beta1"]
                  [org.clojure/core.async "LATEST"]
-                 [net.cgrand/xforms "LATEST"]
+                 [net.cgrand/xforms "LATEST"] ;; Nice stuff for core.async.
                  ;;[zprint "LATEST"] ;; Alternate PPRINT facilities.
                  [mvxcvi/puget "LATEST"] ;; Alternate PPRINT facilities.
                  [io.aviso/pretty "LATEST"] ;; Pretty printer for exceptions.
                  [com.google.guava/guava "LATEST"]
                  [clojure.java-time "LATEST"]
                  [metosin/jsonista "LATEST"] ;; JSON parsing and generation.
-                 [http-kit "LATEST"]
+                 [http-kit "LATEST"] ;; HTTP server, client and websocket stuff.
                  [com.taoensso/timbre "LATEST"]])
-
