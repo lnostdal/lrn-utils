@@ -10,5 +10,8 @@
                  [mvxcvi/puget "LATEST"] ;; Alternate PPRINT facilities.
                  [io.aviso/pretty "LATEST"] ;; Pretty printer for exceptions.
                  [com.google.guava/guava "LATEST"]
-                 [clojure.java-time "LATEST"]])
+                 [clojure.java-time "LATEST"]
+                 [metosin/jsonista "LATEST"] ;; JSON parsing and generation.
+                 [http-kit "2.4.0-alpha3"]
+                 [com.taoensso/timbre "4.10.0"]])
 
