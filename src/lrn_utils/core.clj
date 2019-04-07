@@ -2,19 +2,27 @@
   (:import (com.google.common.collect EvictingQueue)
            (com.google.common.cache Cache CacheBuilder CacheLoader))
   (:require [clojure.pprint :refer (cl-format print-table #_pprint #_pprint-str)])
-  ;; NOTE/TODO: Puget seems like complete bullshit now; it doesn't care about flags set in .emacs or *print-length* or anything.
-  ;;(:require [puget.printer :refer (cprint cprint-str) :rename {cprint pprint, cprint-str pprint-str}])
-  (:require [zprint.core :refer (czprint czprint-str) :rename {czprint pprint, czprint-str pprint-str}])
+  (:require [puget.printer :refer (cprint cprint-str) :rename {cprint pprint, cprint-str pprint-str}])
+  ;;(:require [zprint.core :refer (czprint czprint-str) :rename {czprint pprint, czprint-str pprint-str}])
   (:require [clojure.string :as str])
   (:require [clojure.core.async :as async])
   (:require [java-time :as jtime])
   (:require io.aviso.exception)
+  (:require [net.cgrand.xforms.rfs :as rfs])
   (:require lrn-utils.misc)
   (:require lrn-utils.coll)
   (:require lrn-utils.unsync-mut)
   (:require lrn-utils.gist)
   (:require lrn-utils.debug)
   (:require lrn-utils.time))
+
+
+;; NOTE/TODO/FIXME: Setting this here like this because what Cider suggests doesn't work anyway ( https://cider.readthedocs.io/en/latest/pretty_printing/ ).
+;; Looks nice on a 1080p screen with 2 column layout (Emacs + Cider). We should not try to be "clever and dynamic" here because this stuff is supposed to be specific to the users development environment anyway; i.e. that's the point of this.
+(alter-var-root #'puget.printer/*options* puget.printer/merge-options
+                {:width 130
+                 :seq-limit 50 ;; Often referred to as *print-length* elsewhere.
+                 :sort-keys 100})
 
 
 

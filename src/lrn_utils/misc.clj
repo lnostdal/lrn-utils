@@ -74,3 +74,6 @@
 
 (defn keywordize ":hello_world => :hello-world or \"hello_world\" => :hello-world"
   ^clojure.lang.Keyword [x] (keyword (clojure.string/replace (name x) \_ \-)))
+
+(defn unkeywordize ":hello-world => \"hello_world\""
+  ^String [x] (clojure.string/replace (name x) \- \_))
