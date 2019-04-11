@@ -23,7 +23,7 @@
   ;;   * Put this server behind a server that does HTTPS/TLS.
   ;;   * Put an API-key or similar in the request (e.g. URL) and use this for filtering.
   (dbg-println req)
-  (dbg-println (:raw (json/read-value (slurp (.bytes (:body req))))))
+  (dbg-println (:raw (json/read-value (slurp (:body req)))))
   {:status 201, :body "OK"})
 
 
@@ -80,6 +80,9 @@
    (fn [data]
      (let [{:keys [output_]} data
            output-str (force output_)]
+       ;; TODO: Have one map (`m`) for the timbre appender and another for the actual log event.
+       ;; TODO: It'd be super cool if we could also log real objects here instead of only strings. Tho I think this should happen in the -HTTP-APPENDER-CH- go-block.
+       ;; FIXME: Make sure this will include stacktraces! Look at how the postal appender (in timbre) is doing this.
        (async/put! -http-appender-ch- {:data output-str, :api-key (:api-key m), :url (:url m)})))})
 
 
