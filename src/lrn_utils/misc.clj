@@ -78,6 +78,9 @@
 (defn unkeywordize ":hello-world => \"hello_world\""
   ^String [x] (clojure.string/replace (name x) \- \_))
 
+(def json-keywordize "E.g. (json/read-value data json-keywordize)"
+  (json/object-mapper {:decode-key-fn keywordize}))
+
 
 
 (defn public-ip []
