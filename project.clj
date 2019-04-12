@@ -10,7 +10,7 @@
                  [net.cgrand/xforms "0.19.0"] ;; Nice stuff for core.async.
                  ;;[zprint "LATEST"] ;; Alternate PPRINT facilities.
                  [mvxcvi/puget "1.1.2"] ;; Alternate PPRINT facilities.
-                 [io.aviso/pretty "0.1.33"] ;; Pretty printer for exceptions.
+                 [io.aviso/pretty "0.1.37"] ;; Pretty printer for exceptions.
                  [com.google.guava/guava "27.1-jre"]
                  [clojure.java-time "0.3.2"]
                  [metosin/jsonista "0.2.2"] ;; JSON parsing and generation.
