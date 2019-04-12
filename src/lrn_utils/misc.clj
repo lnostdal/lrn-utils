@@ -86,4 +86,3 @@
 (defn public-ip []
   (-> (slurp (:body @(http-client/get "https://checkip.amazonaws.com")))
       (clojure.string/trim-newline)))
-
