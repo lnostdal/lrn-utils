@@ -12,8 +12,10 @@
 (defn start-watchdog! "`interval` millies."
   [^long interval]
   (when (get (System/getenv) "NOTIFY_SOCKET")
+    (log/info "systemd watchdog started.")
     (async/go-loop []
       (try
+        ;; TODO/FIXME: This worker pool might be fixed actually; I think it is -- so this might not be a great idea.
         (let [timeout-ch (async/timeout interval)]
           (async/alt!
             -dummy-ch- (throw (ex-info "This should never happen.." {}))
