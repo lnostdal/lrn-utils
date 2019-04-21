@@ -6,21 +6,36 @@
   (:import [info.faljse.SDNotify SDNotify]))
 
 
-(def ^:private -dummy-ch- (async/chan))
+(defonce ^:private -watchdog-future- (atom nil))
 
 
-(defn start-watchdog! "`interval` millies."
-  [^long interval]
-  (when (get (System/getenv) "NOTIFY_SOCKET")
-    (log/info "systemd watchdog started.")
-    (async/go-loop []
-      (try
-        ;; TODO/FIXME: This worker pool might be fixed actually; I think it is -- so this might not be a great idea.
-        (let [timeout-ch (async/timeout interval)]
-          (async/alt!
-            -dummy-ch- (throw (ex-info "This should never happen.." {}))
-            timeout-ch (SDNotify/sendWatchdog)))
-        (catch Throwable ex
-          (log/fatal ex "systemd watchdog seems to be failing; this can't be good.")
-          (Thread/sleep 3000)))
-      (recur))))
+(defn stop-watchdog! []
+  (locking -watchdog-future-
+    (when-let [f @-watchdog-future-]
+      (future-cancel f)
+      (reset! -watchdog-future- nil))))
+
+
+(defn start-watchdog! "Returns a future if the process is running under systemd -- or NIL otherwise.
+  `interval`: millies."
+  ([^long interval] (start-watchdog! interval false))
+
+  ([^long interval debug?]
+   (when (get (System/getenv) "NOTIFY_SOCKET")
+     (log/info "systemd: watchdog started.")
+     (locking -watchdog-future-
+       (stop-watchdog!)
+       (->> (future
+              (loop []
+                (try
+                  (when debug? (log/info "systemd: calling SDNotify/sendWatchdog"))
+                  (SDNotify/sendWatchdog)
+                  (Thread/sleep interval)
+                  (catch java.lang.InterruptedException ex
+                    (log/info ex "systemd: watchdog is stopping.")
+                    (throw ex))
+                  (catch Throwable ex
+                    (log/fatal ex "systemd: watchdog seems to be failing; this can't be good, but trying to recover.")
+                    (Thread/sleep 3000)))
+                (recur)))
+            (reset! -watchdog-future-))))))
