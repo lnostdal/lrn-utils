@@ -21,9 +21,10 @@
   ([^long interval] (start-watchdog! interval false))
 
   ([^long interval debug?]
-   (when (get (System/getenv) "NOTIFY_SOCKET")
-     (log/info "systemd: watchdog started.")
+   (if-not (get (System/getenv) "NOTIFY_SOCKET")
+     (log/info "systemd: NOTIFY_SOCKET env var not set; not starting watchdog.")
      (locking -watchdog-future-
+       (log/info "systemd: watchdog starting.")
        (stop-watchdog!)
        (->> (future
               (loop []
