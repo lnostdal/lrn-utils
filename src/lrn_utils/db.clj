@@ -30,14 +30,14 @@
 
 (def -db-conn-
   (delay
-   {:datasource
-    (com.zaxxer.hikari.HikariDataSource.
-     (doto (com.zaxxer.hikari.HikariConfig.)
-       (.setJdbcUrl (or (env :database-url)
-                        "jdbc:pgsql://127.0.0.1:5432/test?user=test&password=test"))
-       (.setMaximumPoolSize (* 2 (. (Runtime/getRuntime) availableProcessors)))
-       (.setAutoCommit true) ;; FIXME: Not sure about this; nice in the REPL during dev perhaps?
-       (.setLeakDetectionThreshold 5)))}))
+    {:datasource
+     (com.zaxxer.hikari.HikariDataSource.
+      (doto (com.zaxxer.hikari.HikariConfig.)
+        (.setJdbcUrl (or (env :database-url)
+                         "jdbc:pgsql://127.0.0.1:5432/test?user=test&password=test"))
+        (.setMaximumPoolSize (* 2 (. (Runtime/getRuntime) availableProcessors)))
+        (.setAutoCommit true) ;; FIXME: Not sure about this; nice in the REPL during dev perhaps?
+        (.setLeakDetectionThreshold 5)))}))
 
 
 
