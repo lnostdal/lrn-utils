@@ -3,8 +3,7 @@
 
   Current goals, features and somewhat missing features:
 
-    * Non-blocking via a sliding buffer – which means that this will not slow down the rest of your system even if it starts generating a lot of exceptions or messages.
-    * Only to be used for initial alerts and notifications because the sliding buffer will skip events or messages when they happen too often.
+    * Mail alerts are non-blocking via a sliding buffer – which means that this will not slow down the rest of your system(s) even if it starts generating a lot of exceptions or messages.
     * What does this mean? Once you get an email you must check the *real* logs.
     * Currently does not guarantee delivery and does not check for double-delivery; other tools should do this."
   (:require [org.httpkit.server :as http-server]
@@ -12,7 +11,9 @@
             [taoensso.encore :as enc]
             [taoensso.timbre :as timbre]
             [jsonista.core :as json]
-            [clojure.core.async :as async])
+            [clojure.core.async :as async]
+            [lrn-utils.db :as db]
+            [lrn-utils.db-queue :as db-queue])
   (:use lrn-utils.core))
 
 ;; FIXME: While this is not a goal of this component, do some *basic* delivery and double-delivery checks?
@@ -28,8 +29,7 @@
   ;; This is just a dummy handler. Usually you'd want to:
   ;;   * Put this server behind a server that does HTTPS/TLS.
   ;;   * Put an API-key or similar in the request (e.g. URL) and use this for filtering.
-  (dbg-println req)
-  (dbg-println (:raw (json/read-value (slurp (:body req)))))
+  (dbgc 'lrn-utils.logging/server-handle-println (json/read-value (:body req)))
   {:status 201, :body "OK"})
 
 
@@ -61,21 +61,51 @@
 
 
 
-(def ^:private -http-appender-ch-
+(def ^:private -email-appender-ch-
   (with1 (async/chan (async/sliding-buffer 3))
     (async/go-loop []
       (try
         (when-let [event (async/<! it)]
           (send-event event))
         (catch Throwable e
-          (println "[lrn-utils.logger/-http-appender-ch-]:" e)
+          (println "[lrn-utils.logger/-email-appender-ch-]:" e)
           (Thread/sleep 1000)))
       (recur))))
 
 
 
-(defn http-appender "Appender for timbre.
-  :url: URL of http server."
+(def ^:private -db-appender-ch-
+  (with1 (async/chan (async/sliding-buffer 3))
+    (async/go-loop []
+      (try
+        nil
+        (catch Throwable e
+          (println "[lrn-utils.logger/-db-appender-ch-]:" e)
+          (Thread/sleep 1000)))
+      (recur))))
+
+
+
+(defn email-appender "Appender for timbre.
+  :url: URL of HTTP server."
+  [m]
+  {:enabled? true
+   :async? false ;; We use a non-blocking buffer anyway (-email-appender-ch-).
+   :min-level (or (:min-level m) :warn)
+   :rate-limit nil
+   :output-fn (partial timbre/default-output-fn {:stacktrace-fonts {}})
+   :fn
+   (fn [data]
+     (let [{:keys [output_]} data
+           output-str (force output_)]
+       ;; TODO: Have one map (`m`) for the timbre appender and another for the actual log event.
+       ;; TODO: It'd be super cool if we could also log real objects here instead of only strings. Tho I think this should happen in the -EMAIL-APPENDER-CH- go-block.
+       (async/put! -email-appender-ch- {:data output-str, :api-key (:api-key m), :url (:url m)})))})
+
+
+
+(defn db-appender "Appender for timbre.
+  :url: URL of HTTP server."
   [m]
   {:enabled? true
    :async? false ;; We use a non-blocking buffer anyway (-http-appender-ch-).
@@ -88,12 +118,15 @@
            output-str (force output_)]
        ;; TODO: Have one map (`m`) for the timbre appender and another for the actual log event.
        ;; TODO: It'd be super cool if we could also log real objects here instead of only strings. Tho I think this should happen in the -HTTP-APPENDER-CH- go-block.
-       (async/put! -http-appender-ch- {:data output-str, :api-key (:api-key m), :url (:url m)})))})
+       (async/put! -db-appender-ch- {:data output-str})))})
 
 
 
-#_(server-start 6243 #'server-handler-println)
-
-#_(timbre/merge-config!
-   {:appenders {::appender (#'http-appender {:url "http://localhost:6243"})}})
-
+(defn- do-test []
+  (server-start 6243 #'server-handler-println)
+  (timbre/merge-config!
+   {:appenders {::appender (#'email-appender {:url "http://localhost:6243"})}})
+  (timbre/fatal (Exception. "hello"))
+  (Thread/sleep 500)
+  (server-stop)
+  nil)
