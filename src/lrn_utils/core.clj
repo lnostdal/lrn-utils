@@ -9,8 +9,8 @@
             [java-time :as jtime]
             [io.aviso.exception]
             [net.cgrand.xforms.rfs :as rfs]
-            [org.httpkit.client :as http-client]
             [jsonista.core :as json]))
+
 
 (require 'lrn-utils.misc)
 (require 'lrn-utils.coll)

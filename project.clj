@@ -1,4 +1,4 @@
-(defproject lrn-utils "0.1.11"
+(defproject lrn-utils "0.1.12"
   :description "A place where I dump common 'stuff' -- both bad, half-baked ideas and perhaps some good ones. Please don't use this, or if you do just extract ideas and snippets from it."
   :url "https://github.com/lnostdal/lrn-utils"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
@@ -14,6 +14,7 @@
                  [com.google.guava/guava "27.1-jre"]
                  [clojure.java-time "0.3.2"]
                  [metosin/jsonista "0.2.2"] ;; JSON parsing and generation.
+                 [clj-http "3.10.0"] ;; HTTP client stuff.
                  [http-kit "2.4.0-alpha4"] ;; HTTP server, client and websocket stuff.
                  [com.taoensso/timbre "4.10.0"]
                  [danlentz/clj-uuid "0.1.7"]
