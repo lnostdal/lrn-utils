@@ -5,7 +5,7 @@
 
 
 
-(defn main-loop "The \"main loop\" of some app or closed-off process; the idea is that all higher-level non-local state is immutable and held in `state` as `handle-fn` processes chunks of events sent to `event-ch`. If `event-ch` is closed this loop ends and returns the final `state` value.
+(defn start "The \"main loop\" of some app or closed-off process; the idea is that all higher-level non-local state is immutable and held in `state` as `handle-fn` processes chunks of events sent to `event-ch`. If `event-ch` is closed this loop ends and returns the final `state` value.
   `event-ch`: Vectors are sent to this; each vector holds a chunk of events for processing by `handle-fn`.
   `state`: Some initial state.
   `handle-fn`: (fn [state events] ..) => state"
