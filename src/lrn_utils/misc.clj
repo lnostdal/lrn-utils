@@ -229,6 +229,7 @@
   [src trg]
   (let [src (java.nio.file.Paths/get (java.net.URI/create (str "file://" src)))
         trg (java.nio.file.Paths/get (java.net.URI/create (str "file://" trg)))]
+    ;;(.sync (.getFD src)) ;; https://en.wikipedia.org/wiki/Ext4#Delayed_allocation_and_potential_data_loss
     (java.nio.file.Files/move src trg (into-array java.nio.file.CopyOption
                                                   [(java.nio.file.StandardCopyOption/ATOMIC_MOVE)
                                                    (java.nio.file.StandardCopyOption/REPLACE_EXISTING)]))))

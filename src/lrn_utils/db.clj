@@ -7,9 +7,7 @@
             [clojure.java.jdbc :as jdbc]
             [postgre-types.json :as pg-types]
             [jsonista.core :as json])
-
-  (:use [lrn-utils.core :as lrn])
-
+  (:use lrn-utils.core)
   (:import [clojure.lang ExceptionInfo])
   (:import [java.sql SQLException])
   (:import [java.util.concurrent TimeoutException])
@@ -18,7 +16,7 @@
 
 
 
-(let [om (json/object-mapper {:decode-key-fn lrn/keywordize})]
+(let [om (json/object-mapper {:decode-key-fn keywordize})]
   (pg-types/add-jsonb-type json/write-value-as-string #(json/read-value % om)))
 
 
@@ -209,8 +207,8 @@
   [table-name]
   (with (fn []
           (-> (jdbc/query *db* ["SELECT table_schema, column_name, data_type, column_default, is_nullable FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ?;" table-name])
-              (lrn/print-table-str)
-              (lrn/dbg-println)))
+              (print-table-str)
+              (dbg-println)))
     (if (bound? #'*db*)
       (it)
       (with-sdb [] (it)))))

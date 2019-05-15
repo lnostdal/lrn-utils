@@ -78,7 +78,8 @@
   (with1 (async/chan (async/sliding-buffer 3))
     (async/go-loop []
       (try
-        nil
+        (when-let [event (async/<! it)]
+          )
         (catch Throwable e
           (println "[lrn-utils.logger/-db-appender-ch-]:" e)
           (Thread/sleep 1000)))
