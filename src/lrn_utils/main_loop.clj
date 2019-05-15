@@ -11,8 +11,8 @@
   `handle-fn`: (fn [state events] ..) => state"
   [id event-ch state handle-fn]
   (try
+    (log/info "Starting main loop" id "for" event-ch)
     (loop [state state]
-      (log/info "Starting main loop" id "for" event-ch)
       (if-let [events (async/<!! event-ch)]
         (recur (try
                  (handle-fn state events)
