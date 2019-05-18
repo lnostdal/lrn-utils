@@ -19,7 +19,6 @@
               String (println (if (> ^long -dbg-max-string-length- (.length ^String elt))
                                 (subs elt 0 (min (.length ^String elt) ^long -dbg-max-string-length-))
                                 elt))
-              Throwable (io.aviso.exception/write-exception elt)
               (print-or-pprint-str (gist elt)))
             (flush))
           (Thread/sleep 25)) ;; TODO:
