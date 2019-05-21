@@ -26,6 +26,7 @@
      (locking -watchdog-future-
        (log/info "systemd: watchdog starting.")
        (stop-watchdog!)
+       (SDNotify/sendNotify) ;; "READY=1"
        (->> (future
               (loop []
                 (try
