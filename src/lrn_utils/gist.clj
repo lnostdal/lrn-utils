@@ -29,7 +29,5 @@
       (catch java.lang.NumberFormatException e
         (java.lang.Double/parseDouble it)))))
 
-(defn gist "Returns the 'gist' of some object. Usually a shorter or more informative (for humans) version of the object. Note that text is not necessarily returned here."
+(defn gist "Returns the 'gist' of some object. Usually a shorter or more informative (for humans) version of the object. Note that text or a string is not necessarily returned here."
   [o] (clojure.walk/prewalk extract-gist o))
-
-
