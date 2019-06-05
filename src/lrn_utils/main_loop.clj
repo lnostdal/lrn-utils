@@ -1,7 +1,23 @@
 (ns lrn-utils.main-loop
+  "  * Deals with cases where you only want a single response to a bulk of events."
   (:require [clojure.core.async :as async]
             [taoensso.timbre :as log])
   (:use lrn-utils.core))
+
+
+
+(def ^:dynamic *iteration-ctx*
+  "Some active context during processing of a chunk of events. Bound to an atom holding a map in context of main-loop.")
+
+
+(defn run-once-only "Run `f` denoted as `k` once only in context of a single main-loop iteration.
+  `f`: (fn [state] ..) => state"
+  [k f]
+  (swap! *iteration-ctx* update ::once-only assoc k f))
+
+
+(defn- do-once-only [state]
+  (reduce #((val %2) %1) state (::once-only @*iteration-ctx*)))
 
 
 
@@ -13,13 +29,17 @@
   (try
     (log/info "Starting main loop" id "for" event-ch)
     (loop [state state]
-      (if-let [events (async/<!! event-ch)]
+      (if-let [event-chunks (async-consume-buffer event-ch true)]
         (recur (try
-                 (handle-fn state events)
+                 (binding [*iteration-ctx* (atom {})]
+                   (let [new-state (reduce #(handle-fn %1 %2) state event-chunks)]
+                     (do-once-only new-state)))
                  (catch Throwable e
+                   ;; FIXME: Would it not make sense to also catch an exception that _intended_ for state update to be thrown away? We'll need to deal correctly with consumers here.
+                   ;; FIXME: How do we deal with consumers that have already been updated about state change that will be reverted here at this point? They will all need to be re-synced? Need some re-sync callback.
                    (log/fatal e "Top-level exception; partial update of `state` lost"
                               "and the latest chunk from `event-ch` was thrown away!"
-                              {:id id, :event-ch event-ch, :events events})
+                              {:id id, :event-ch event-ch, :event-chunks event-chunks})
                    (Thread/sleep 1000) ;; TODO: Better rate-limiting? Top-level ex shouldn't happen normally tho.
                    state)))
         state))
