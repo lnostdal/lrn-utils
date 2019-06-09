@@ -25,11 +25,11 @@
 
 
 
-(defn server-handler-println [req]
+(defn- server-handler-println [req]
   ;; This is just a dummy handler. Usually you'd want to:
   ;;   * Put this server behind a server that does HTTPS/TLS.
   ;;   * Put an API-key or similar in the request (e.g. URL) and use this for filtering.
-  (dbgc 'lrn-utils.logging/server-handle-println (json/read-value (:body req)))
+  (dbgc 'lrn-utils.logging/server-handle-println (json/read-value (:body req) json-keywordize))
   {:status 201, :body "OK"})
 
 
@@ -53,7 +53,7 @@
   (let [event-id (.toString (java.util.UUID/randomUUID))
         res @(http-client/post (:url m)
                                {:timeout @-http-timeout-
-                                :body (-> {:raw (:data m), :event-id event-id, :api-key (:api-key m)}
+                                :body (-> {:api-key (:api-key m), :data (assoc (:data m) :event-id event-id)}
                                           (json/write-value-as-string))})]
     (when (not= 201 (:status res))
       (println "## lrn-utils.logger/send-event =>")
@@ -95,13 +95,11 @@
    :min-level (or (:min-level m) :warn)
    :rate-limit nil
    :output-fn (partial timbre/default-output-fn {:stacktrace-fonts {}})
-   :fn
-   (fn [data]
-     (let [{:keys [output_]} data
-           output-str (force output_)]
-       ;; TODO: Have one map (`m`) for the timbre appender and another for the actual log event.
-       ;; TODO: It'd be super cool if we could also log real objects here instead of only strings. Tho I think this should happen in the -EMAIL-APPENDER-CH- go-block.
-       (async/put! -email-appender-ch- {:data output-str, :api-key (:api-key m), :url (:url m)})))})
+   :fn (fn [data]
+         ;; TODO: Have one map (`m`) for the timbre appender and another for the actual log event.
+         (async/put! -email-appender-ch- {:api-key (:api-key m), :url (:url m)
+                                          :data {:raw (force (:output_ data)), :hostname (force (:hostname_ data))
+                                                 :timestamp (force (:timestamp_ data))}}))})
 
 
 
