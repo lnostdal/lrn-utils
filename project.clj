@@ -16,7 +16,7 @@
                  [clj-http "3.10.0"] ;; HTTP client stuff.
                  [http-kit "2.4.0-alpha4"] ;; HTTP server, client and websocket stuff.
                  [com.taoensso/timbre "4.10.0"]
-                 [danlentz/clj-uuid "0.1.7"]
+                 [danlentz/clj-uuid "0.1.9"]
                  [environ "1.1.0"]
                  [postgre-types "0.0.4"] ;; Used to extend java.jdbc so it can handle JSONB.
                  [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.8.2"] ;; JDBC driver.
