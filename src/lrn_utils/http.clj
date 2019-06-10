@@ -1,6 +1,5 @@
 (ns lrn-utils.http
   (:require [clj-http.client :as client]
-            [org.httpkit.server :as server]
             [jsonista.core :as json])
   (:use lrn-utils.core)
   (:import java.net.SocketTimeoutException))
