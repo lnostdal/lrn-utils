@@ -37,14 +37,14 @@
 (defn json-req "Simple JSON request + JSON response handling. Blocks and returns a parsed JSON response."
   ([url data] (json-req url data {}))
   ([url data opts]
-   (let [opts (merge {:method :post, :url url, :content-type :json, :throw-exceptions false
-                      :body (json/write-value-as-bytes data)
-                      :socket-timeout @-client-timeout-, :connection-timeout @-client-timeout-}
-                     opts)
-         res (try (client/request opts)
+   (let [req (merge {:method :post, :url url, :content-type :json, :throw-exceptions false
+                     :body (json/write-value-as-bytes data)
+                     :socket-timeout @-client-timeout-, :connection-timeout @-client-timeout-}
+                    opts)
+         res (try (client/request req)
                   (catch Throwable e
-                    (throw (ex-info "Exception during HTTP request" opts e))))]
+                    (throw (ex-info "Exception during HTTP request" req e))))]
      (-> (update res :body #(try (json/read-value % json-keywordize)
                                  (catch Throwable e
-                                   (throw (ex-info "Exception during JSON parsing" {:request opts, :response res} e)))))
-         (assoc :request opts)))))
+                                   (throw (ex-info "Exception during JSON parsing" {:request req, :response res} e)))))
+         (assoc :request req)))))
