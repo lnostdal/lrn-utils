@@ -6,13 +6,6 @@
 
 
 
-;; This makes all HTTP client related stuff go *much* faster.
-;; https://github.com/dakrone/clj-http#persistent-connections
-(alter-var-root #'clj-http.conn-mgr/*connection-manager*
-                (fn [_]
-                  (clj-http.conn-mgr/make-reusable-conn-manager
-                   {:timeout 90 ;; Timeout here is not for the request (round-trip), but for the connection keep-alive.
-                    :threads 8, :default-per-route 3})))
 
 
 
