@@ -29,5 +29,8 @@
       (catch java.lang.NumberFormatException e
         (java.lang.Double/parseDouble it)))))
 
+(defmethod extract-gist java.lang.Throwable [^java.lang.Throwable o]
+  (with-out-str (io.aviso.exception/write-exception o)))
+
 (defn gist "Returns the 'gist' of some object. Usually a shorter or more informative (for humans) version of the object. Note that text or a string is not necessarily returned here."
   [o] (clojure.walk/prewalk extract-gist o))
