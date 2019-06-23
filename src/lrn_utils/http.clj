@@ -7,6 +7,24 @@
 
 
 
+(defonce -server- (atom nil)) ;; Actual server object returned by HTTP-KIT.
+(defonce -http-timeout- (atom 10000)) ;; millis
+
+
+
+(defn server-stop []
+  (locking -server-
+    (when-let [server @-server-]
+      (server :timeout 1000)
+      (reset! -server- nil))))
+
+
+
+(defn server-start "`handler-fn`: (fn [req] {:status 200, :body (json/write-value-as-bytes {..})})"
+  [port handler-fn]
+  (locking -server-
+    (server-stop)
+    (reset! -server- (http-server/run-server handler-fn {:port port}))))
 
 
 
