@@ -1,5 +1,6 @@
 (ns lrn-utils.http
-  (:require [clj-http.client :as client]
+  (:require [org.httpkit.server :as http-server]
+            [org.httpkit.client :as http-client]
             [jsonista.core :as json])
   (:use lrn-utils.core)
   (:import java.net.SocketTimeoutException))
@@ -33,11 +34,11 @@
    (let [req (merge {:method :post, :url url, :content-type :json, :throw-exceptions false
                      :body (json/write-value-as-bytes data)
                      :socket-timeout @-client-timeout-, :connection-timeout @-client-timeout-}
-                    opts)
-         res (try (client/request req)
-                  (catch Throwable e
-                    (throw (ex-info "Exception during HTTP request" req e))))]
-     (-> (update res :body #(try (json/read-value % json-keywordize)
-                                 (catch Throwable e
-                                   (throw (ex-info "Exception during JSON parsing" {:request req, :response res} e)))))
-         (assoc :request req)))))
+                    opts)]
+     (as-> (try @(http-client/request req)
+                (catch Throwable e
+                  (throw (ex-info "Exception during HTTP request" {:request req} e)))) res
+       (-> (update res :body #(try (json/read-value % json-keywordize)
+                                   (catch Throwable e
+                                     (throw (ex-info "Exception during JSON parsing" {:request req, :response res} e)))))
+           (assoc :request req))))))

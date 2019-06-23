@@ -5,7 +5,7 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[javax.xml.bind/jaxb-api "2.4.0-b180830.0359"] ;; Needed for newer JDKs.
                  [org.clojure/clojure "1.10.1-beta2"]
-                 [org.clojure/core.async "0.4.490"]
+                 [org.clojure/core.async "0.4.500"]
                  [net.cgrand/xforms "0.19.0"] ;; Nice stuff for core.async.
                  ;;[zprint "LATEST"] ;; Alternate PPRINT facilities.
                  [mvxcvi/puget "1.1.2"] ;; Alternate PPRINT facilities.
@@ -13,7 +13,6 @@
                  [com.google.guava/guava "27.1-jre"]
                  [clojure.java-time "0.3.2"]
                  [metosin/jsonista "0.2.2"] ;; JSON parsing and generation.
-                 [clj-http "3.10.0"] ;; HTTP client stuff.
                  [http-kit "2.4.0-alpha4"] ;; HTTP server, client and websocket stuff.
                  [com.taoensso/timbre "4.10.0"]
                  [danlentz/clj-uuid "0.1.9"]

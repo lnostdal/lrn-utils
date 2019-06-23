@@ -9,8 +9,8 @@
             [java-time :as jtime]
             [io.aviso.exception]
             [net.cgrand.xforms.rfs :as rfs]
-            [jsonista.core :as json]
-            [clj-http.client]))
+            [jsonista.core :as json]))
+
 
 
 (require 'lrn-utils.misc)

@@ -93,8 +93,8 @@
 
 
 (defn public-ip []
-  (-> (clj-http.client/get "https://checkip.amazonaws.com")
-      :body (clojure.string/trim-newline)))
+  (-> @(org.httpkit.client/get "https://checkip.amazonaws.com" {:as :text})
+      :body str clojure.string/trim-newline))
 
 
 
