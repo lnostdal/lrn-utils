@@ -4,7 +4,7 @@
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[javax.xml.bind/jaxb-api "2.4.0-b180830.0359"] ;; Needed for newer JDKs.
-                 [org.clojure/clojure "1.10.1-beta2"]
+                 [org.clojure/clojure "1.10.1"]
                  [org.clojure/core.async "0.4.500"]
                  [net.cgrand/xforms "0.19.0"] ;; Nice stuff for core.async.
                  ;;[zprint "LATEST"] ;; Alternate PPRINT facilities.
@@ -12,10 +12,11 @@
                  [io.aviso/pretty "0.1.37"] ;; Pretty printer for exceptions.
                  [com.google.guava/guava "27.1-jre"]
                  [clojure.java-time "0.3.2"]
-                 [metosin/jsonista "0.2.2"] ;; JSON parsing and generation.
-                 [http-kit "2.4.0-alpha4"] ;; HTTP server, client and websocket stuff.
-                 [com.taoensso/timbre "4.10.0"]
-                 [danlentz/clj-uuid "0.1.9"]
+                 [metosin/jsonista "0.2.3"] ;; JSON parsing and generation.
+                 [http-kit "2.4.0-alpha4"] ;; HTTP+WS server and HTTP client.
+                 [stylefruits/gniazdo "1.1.2-SNAPSHOT"] ;; WS client (via Jetty).
+                 [com.taoensso/timbre "4.10.0"] ;; Logging.
+                 [danlentz/clj-uuid "0.1.9"] ;; UUID.
                  [environ "1.1.0"]
                  [postgre-types "0.0.4"] ;; Used to extend java.jdbc so it can handle JSONB.
                  [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.8.2"] ;; JDBC driver.
