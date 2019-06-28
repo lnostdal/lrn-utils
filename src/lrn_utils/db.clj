@@ -14,6 +14,30 @@
   (:import [com.impossibl.postgres.jdbc PGDataSource]
            [com.impossibl.postgres.api.jdbc PGNotificationListener]))
 
+;; TODO: LISTEN+NOTIFY for "DB push"! =>
+
+;; (def -listener-
+;;   (reify PGNotificationListener
+;;     (^void notification [this ^int processId ^String channelName ^String payload]
+;;      (dbg-println "msg: " payload) )))
+
+;; (def -datasource- (doto (PGDataSource.)
+;;                     (.setHost "localhost")
+;;                     (.setPort 5432)
+;;                     (.setDatabaseName "test")
+;;                     (.setUser "test")
+;;                     (.setPassword "test")))
+
+;; (def -connection-
+;;   (doto (.getConnection -datasource-)
+;;     (.addNotificationListener -listener-)))
+
+;; (doto (.createStatement connection)
+;;       (.execute "LISTEN mymessages;")
+;;       (.close))
+
+;; ;; then doing this in `psql` works: select pg_notify('mymessages', 'hello...');
+
 
 
 (let [om (json/object-mapper {:decode-key-fn keywordize})]
